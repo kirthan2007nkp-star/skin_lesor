@@ -1,0 +1,27 @@
+PUT YOUR LABELED TRAINING IMAGES HERE.
+
+Required structure:
+
+dataset/
+  benign/
+    image1.jpg
+    image2.jpg
+    ...
+  melanoma/
+    image1.jpg
+    image2.jpg
+    ...
+
+Folder names MUST remain exactly:
+  benign
+  melanoma
+
+For a meaningful project, use a reputable labeled dataset and follow its
+license/terms. A commonly used research source is the ISIC Challenge data:
+https://challenge.isic-archive.com/data/
+
+Do not use random unlabeled images from the internet as training data.
+
+The included training script requires at least 10 images per class only to
+verify that the pipeline can run. A serious experiment needs substantially
+more properly labeled data and careful validation.
