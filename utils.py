@@ -10,6 +10,10 @@ MODEL_PATH = Path("models") / "skin_lesion_model.keras"
 METADATA_PATH = Path("models") / "metadata.json"
 
 
+# =========================================================
+# LOAD METADATA
+# =========================================================
+
 def load_metadata():
 
     if not METADATA_PATH.exists():
@@ -19,7 +23,7 @@ def load_metadata():
                 "benign",
                 "melanoma",
                 "non_skin",
-                "other",
+                "other_skin",
             ],
             "image_size": 224,
         }
@@ -33,6 +37,10 @@ def load_metadata():
         return json.load(file)
 
 
+# =========================================================
+# LOAD MODEL
+# =========================================================
+
 def load_trained_model():
 
     if not MODEL_PATH.exists():
@@ -45,6 +53,10 @@ def load_trained_model():
         MODEL_PATH
     )
 
+
+# =========================================================
+# PREPARE IMAGE
+# =========================================================
 
 def prepare_image(
     image: Image.Image,
@@ -73,6 +85,10 @@ def prepare_image(
     return array
 
 
+# =========================================================
+# PREDICTION
+# =========================================================
+
 def predict_lesion(
     model,
     image,
@@ -98,7 +114,7 @@ def predict_lesion(
             "benign",
             "melanoma",
             "non_skin",
-            "other",
+            "other_skin",
         ],
     )
 
@@ -123,17 +139,22 @@ def predict_lesion(
 
     probability_map = {
         class_names[index]:
-            float(raw_probabilities[index])
+            float(
+                raw_probabilities[index]
+            )
 
         for index in range(
-            len(class_names)
+            min(
+                len(class_names),
+                len(raw_probabilities),
+            )
         )
     }
 
 
-    # ---------------------------------------------
-    # FINAL 3 RESULTS
-    # ---------------------------------------------
+    # =====================================================
+    # FINAL 3 APP CATEGORIES
+    # =====================================================
 
     benign_score = float(
         probability_map.get(
@@ -151,22 +172,25 @@ def predict_lesion(
     )
 
 
-    # Combine the model's two rejection categories
-    # into one simple result called "Other".
+    # Both internal categories become "Other"
     other_score = float(
-        probability_map.get(
-            "other",
-            0.0,
-        )
-        +
+
         probability_map.get(
             "non_skin",
+            0.0,
+        )
+
+        +
+
+        probability_map.get(
+            "other_skin",
             0.0,
         )
     )
 
 
     final_probabilities = {
+
         "benign":
             benign_score,
 
@@ -178,20 +202,15 @@ def predict_lesion(
     }
 
 
+    # Pick highest final category
     best_class = max(
         final_probabilities,
         key=final_probabilities.get,
     )
 
 
-    confidence = float(
-        final_probabilities[
-            best_class
-        ]
-    )
-
-
     labels = {
+
         "benign":
             "Benign-like",
 
@@ -208,7 +227,15 @@ def predict_lesion(
     ]
 
 
+    confidence = float(
+        final_probabilities[
+            best_class
+        ]
+    )
+
+
     return {
+
         "prediction":
             prediction_label,
 
@@ -223,6 +250,9 @@ def predict_lesion(
 
         "probabilities":
             final_probabilities,
+
+        "raw_probabilities":
+            probability_map,
 
         "image_size":
             image_size,

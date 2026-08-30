@@ -1,27 +1,23 @@
 {
   "project": "DermaSense AI",
-  "architecture": "Custom 4-class CNN trained from scratch",
-  "pretrained": false,
+  "architecture": "MobileNetV2 Transfer Learning",
+  "pretrained": true,
+  "pretrained_dataset": "ImageNet",
   "class_names": [
     "benign",
     "melanoma",
     "non_skin",
-    "other"
+    "other_skin"
   ],
+  "display_mapping": {
+    "benign": "Benign-like",
+    "melanoma": "Melanoma-suspicious",
+    "non_skin": "Other",
+    "other_skin": "Other"
+  },
   "image_size": 224,
-  "classes": {
-    "benign": "Benign-like skin lesion",
-    "melanoma": "Melanoma-suspicious skin lesion",
-    "other": "Other skin lesion",
-    "non_skin": "Unsupported non-skin image"
-  },
-  "dataset_counts": {
-    "benign": 1305,
-    "melanoma": 1305,
-    "non_skin": 1000,
-    "other": 1000
-  },
-  "validation_split": 0.2,
-  "seed": 42,
-  "note": "Educational AI prototype. Not a medical diagnostic device."
+  "batch_size": 32,
+  "dataset": "HAM10000 + non-skin examples",
+  "split_method": "Separate train, validation and test sets",
+  "educational_use_only": true
 }
