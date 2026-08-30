@@ -10,7 +10,6 @@ import streamlit as st
 
 from utils import (
     MODEL_PATH,
-    METADATA_PATH,
     load_metadata,
     load_trained_model,
     predict_lesion,
@@ -185,10 +184,10 @@ init_db()
 
 with st.sidebar:
     st.markdown("## 🔬 DermaSense AI")
-    st.caption("Machine Spectra 1.0 • Streamlit + CNN")
+    st.caption("Skin Lesion Classifier • CNN")
     page = st.radio(
         "Navigation",
-        ["Analyze", "History", "Model & Workflow", "Project Notes"],
+        ["Analyze", "History"],
         label_visibility="collapsed",
     )
     st.markdown("---")
@@ -201,7 +200,7 @@ with st.sidebar:
 st.markdown(
     """
     <div class="hero">
-      <div class="hero-kicker">Machine Spectra 1.0 • AIML Mini Project</div>
+      <div class="hero-kicker">AI-Powered Image Classification</div>
       <h1>Skin Lesion Classifier</h1>
       <p>Upload a skin-lesion image and let a trained MobileNetV2-based CNN estimate whether the image looks benign-like or melanoma-suspicious.</p>
     </div>
@@ -352,78 +351,5 @@ elif page == "History":
             st.success("History cleared.")
             st.rerun()
 
-elif page == "Model & Workflow":
-    st.markdown("### How the project works")
-    a, b, c, d, e = st.columns(5)
-    a.markdown("**1. Image**\n\nUpload JPG/PNG")
-    b.markdown("**2. Resize**\n\n224 × 224 RGB")
-    c.markdown("**3. CNN**\n\nMobileNetV2 features")
-    d.markdown("**4. Classify**\n\nSigmoid output")
-    e.markdown("**5. Result**\n\nScore + confidence")
-
-    st.markdown("---")
-    st.markdown("### Model architecture")
-    st.code(
-        """Input image (224×224×3)
-↓
-Data augmentation
-↓
-Rescale pixels to [-1, 1]
-↓
-MobileNetV2 convolutional base (ImageNet weights)
-↓
-Global Average Pooling
-↓
-Dropout
-↓
-Dense(1, sigmoid)
-↓
-Benign-like / Melanoma-suspicious""",
-        language="text",
-    )
-
-    metadata = load_metadata()
-    if metadata:
-        st.markdown("### Saved model metadata")
-        st.json(metadata)
-    else:
-        st.info("Metadata will appear here after training.")
-
-    curves = Path("models") / "training_curves.png"
-    cm = Path("models") / "confusion_matrix.png"
-    if curves.exists():
-        st.markdown("### Training curves")
-        st.image(str(curves), use_container_width=True)
-    if cm.exists():
-        st.markdown("### Validation confusion matrix")
-        st.image(str(cm), use_container_width=True)
-
-elif page == "Project Notes":
-    st.markdown("### Presentation-ready explanation")
-    st.markdown(
-        """
-**Problem:** Visual inspection of skin lesions can be difficult, and early melanoma detection is important.
-
-**Objective:** Build an educational AI prototype that classifies lesion images into two model categories: benign-like and melanoma-suspicious.
-
-**Algorithm:** A convolutional neural network using **transfer learning with MobileNetV2**. The pre-trained convolutional layers extract visual features, while a new classifier head learns the two project classes.
-
-**Input:** A skin-lesion image.
-
-**Output:** Predicted class, classification confidence, and melanoma-class model score.
-
-**Why transfer learning?** It allows the project to reuse useful visual features learned from a large image dataset and then adapt them to the lesion dataset.
-
-**Evaluation:** Accuracy, AUC, precision, recall, training curves, and a confusion matrix are saved during training.
-
-**Limitation:** Performance depends heavily on dataset quality, image type, skin-tone representation, class balance, labeling quality, and validation design. It must not be presented as a medical diagnosis.
-        """
-    )
-
-    st.markdown(
-        '<div class="info-strip"><b>Judge-friendly line:</b> “DermaSense AI is an educational early-screening prototype that demonstrates how CNN-based transfer learning can identify visual patterns associated with melanoma-labelled images.”</div>',
-        unsafe_allow_html=True,
-    )
-
 st.markdown("---")
-st.caption("DermaSense AI • Machine Spectra 1.0 • Educational use only")
+st.caption("DermaSense AI • Educational use only")
