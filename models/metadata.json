@@ -1,0 +1,16 @@
+{
+  "project": "DermaSense AI",
+  "architecture": "Custom CNN trained from scratch",
+  "pretrained": false,
+  "class_names": [
+    "benign",
+    "melanoma"
+  ],
+  "image_size": 224,
+  "threshold": 0.5,
+  "benign_images": 1305,
+  "melanoma_images": 1305,
+  "validation_split": 0.2,
+  "seed": 42,
+  "note": "Educational AI prototype. Not a medical diagnostic device."
+}
