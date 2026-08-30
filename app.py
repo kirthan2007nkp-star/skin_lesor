@@ -2,7 +2,6 @@ from pathlib import Path
 import io
 import sqlite3
 from datetime import datetime
-from textwrap import dedent
 
 import pandas as pd
 from PIL import Image, UnidentifiedImageError
@@ -33,229 +32,83 @@ st.set_page_config(
 
 
 # =========================================================
-# CSS
+# THEME
 # =========================================================
 
-CUSTOM_CSS = """
-<style>
+st.markdown(
+    """
+    <style>
 
-:root {
-    --bg: #07111f;
-    --panel: #0b1728;
-    --panel2: #0f2035;
-    --border: #1d3853;
-    --text: #edf7ff;
-    --muted: #9fb6c9;
-    --cyan: #38d6d2;
-    --blue: #5fa8ff;
-    --amber: #ffce6b;
-    --red: #ff7b8a;
-    --green: #76e2a8;
-}
+    .stApp {
+        background:
+            radial-gradient(
+                circle at 10% 5%,
+                rgba(56,214,210,.08),
+                transparent 28%
+            ),
+            radial-gradient(
+                circle at 95% 15%,
+                rgba(95,168,255,.08),
+                transparent 25%
+            ),
+            linear-gradient(
+                180deg,
+                #06101d 0%,
+                #081422 100%
+            );
+    }
 
-.stApp {
-    background:
-        radial-gradient(
-            circle at 10% 5%,
-            rgba(56,214,210,.10),
-            transparent 28%
-        ),
-        radial-gradient(
-            circle at 95% 15%,
-            rgba(95,168,255,.10),
-            transparent 25%
-        ),
-        linear-gradient(
-            180deg,
-            #06101d 0%,
-            #081422 100%
-        );
+    [data-testid="stSidebar"] {
+        background:
+            linear-gradient(
+                180deg,
+                #071321,
+                #091a2b
+            );
 
-    color: var(--text);
-}
+        border-right: 1px solid #1d3853;
+    }
 
+    .block-container {
+        max-width: 1200px;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+    }
 
-.block-container {
-    padding-top: 1.8rem;
-    padding-bottom: 3rem;
-    max-width: 1200px;
-}
+    [data-testid="stFileUploader"] {
+        border: 1px dashed #2c607a;
+        border-radius: 18px;
+        padding: 10px;
+        background: rgba(10,29,47,.75);
+    }
 
+    [data-testid="stMetric"] {
+        background: rgba(11,23,40,.9);
+        border: 1px solid #1d3853;
+        padding: 13px 15px;
+        border-radius: 16px;
+    }
 
-[data-testid="stSidebar"] {
-    background:
-        linear-gradient(
-            180deg,
-            #071321,
-            #091a2b
-        );
-
-    border-right: 1px solid var(--border);
-}
-
-
-.hero {
-    padding: 26px 28px;
-    border: 1px solid var(--border);
-    border-radius: 24px;
-
-    background:
-        linear-gradient(
-            135deg,
-            rgba(12,31,51,.95),
-            rgba(7,20,34,.95)
-        );
-
-    box-shadow:
-        0 16px 45px rgba(0,0,0,.20);
-
-    margin-bottom: 1rem;
-}
-
-
-.hero-kicker {
-    color: var(--cyan);
-    letter-spacing: .14em;
-    font-size: .75rem;
-    font-weight: 800;
-    text-transform: uppercase;
-}
-
-
-.hero h1 {
-    margin: .35rem 0 .6rem;
-    font-size: 2.45rem;
-    line-height: 1.05;
-}
-
-
-.hero p {
-    color: var(--muted);
-    margin: 0;
-    max-width: 900px;
-    font-size: 1.02rem;
-    line-height: 1.7;
-}
-
-
-.card {
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 19px 20px;
-    background: rgba(11,23,40,.92);
-    min-height: 100%;
-}
-
-
-.card-title {
-    font-weight: 800;
-    font-size: 1rem;
-    margin-bottom: .35rem;
-}
-
-
-.muted {
-    color: var(--muted);
-}
-
-
-.score {
-    font-size: 2rem;
-    font-weight: 900;
-    line-height: 1.1;
-    margin: .3rem 0 .6rem;
-}
-
-
-.tag {
-    display: inline-block;
-    border-radius: 999px;
-    padding: 7px 11px;
-    border: 1px solid var(--border);
-    background: #10243a;
-    font-weight: 800;
-}
-
-
-.good {
-    color: var(--green);
-}
-
-
-.warn {
-    color: var(--amber);
-}
-
-
-.alert {
-    color: var(--red);
-}
-
-
-.blue {
-    color: var(--blue);
-}
-
-
-.disclaimer {
-    border: 1px solid #664d1f;
-    border-left: 4px solid var(--amber);
-    border-radius: 14px;
-    padding: 14px 16px;
-    background: rgba(87,62,14,.20);
-    color: #ffe7ad;
-    line-height: 1.7;
-}
-
-
-div.stButton > button {
-    border-radius: 14px;
-    border: 1px solid #286c7b;
-
-    background:
-        linear-gradient(
+    div.stButton > button {
+        border-radius: 14px;
+        border: 1px solid #286c7b;
+        background: linear-gradient(
             135deg,
             #126c79,
             #245a96
         );
+        color: white;
+        font-weight: 800;
+        min-height: 46px;
+    }
 
-    color: white;
-    font-weight: 800;
-    min-height: 46px;
-}
+    div.stButton > button:hover {
+        border-color: #48e4dd;
+        color: white;
+    }
 
-
-div.stButton > button:hover {
-    border-color: #48e4dd;
-    color: white;
-}
-
-
-[data-testid="stFileUploader"] {
-    border: 1px dashed #2c607a;
-    border-radius: 18px;
-    padding: 10px;
-    background: rgba(10,29,47,.75);
-}
-
-
-[data-testid="stMetric"] {
-    background: rgba(11,23,40,.9);
-    border: 1px solid var(--border);
-    padding: 13px 15px;
-    border-radius: 16px;
-}
-
-
-hr {
-    border-color: #17324a;
-}
-
-</style>
-"""
-
-st.markdown(
-    CUSTOM_CSS,
+    </style>
+    """,
     unsafe_allow_html=True,
 )
 
@@ -358,54 +211,12 @@ init_db()
 
 
 # =========================================================
-# RESULT STYLE
-# =========================================================
-
-def result_style(prediction):
-
-    if prediction == "Benign-like":
-
-        return (
-            "Benign-like pattern",
-            "good",
-        )
-
-    if prediction == "Melanoma-suspicious":
-
-        return (
-            "Suspicious model pattern",
-            "alert",
-        )
-
-    if prediction == "Other skin lesion":
-
-        return (
-            "Different lesion type detected",
-            "blue",
-        )
-
-    if prediction == "Unsupported image":
-
-        return (
-            "Non-skin / unsupported image",
-            "warn",
-        )
-
-    return (
-        "Low-confidence result",
-        "warn",
-    )
-
-
-# =========================================================
 # SIDEBAR
 # =========================================================
 
 with st.sidebar:
 
-    st.markdown(
-        "## 🔬 DermaSense AI"
-    )
+    st.title("🔬 DermaSense AI")
 
     st.caption(
         "4-Class Skin Image Classifier"
@@ -420,12 +231,12 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    st.markdown("---")
+    st.divider()
 
     if MODEL_PATH.exists():
 
         st.success(
-            "Trained model detected"
+            "✅ Trained model detected"
         )
 
     else:
@@ -448,70 +259,48 @@ with st.sidebar:
 
 
 # =========================================================
-# HERO
+# HEADER
 # =========================================================
 
-hero_html = dedent(
-    """
-    <div class="hero">
-        <div class="hero-kicker">
-            AI-Powered Skin Image Analysis
-        </div>
+with st.container(border=True):
 
-        <h1>
-            Skin Lesion Classifier
-        </h1>
+    st.caption(
+        "AI-POWERED SKIN IMAGE ANALYSIS"
+    )
 
-        <p>
-            Upload an image and let our custom CNN,
-            trained from scratch, classify it as
-            benign-like, melanoma-suspicious,
-            another skin-lesion type, or an
-            unsupported non-skin image.
-        </p>
-    </div>
-    """
-)
+    st.title(
+        "Skin Lesion Classifier"
+    )
 
-st.markdown(
-    hero_html,
-    unsafe_allow_html=True,
-)
+    st.write(
+        """
+        Upload an image and let our custom CNN,
+        trained from scratch, classify it as
+        **Benign-like**, **Melanoma-suspicious**,
+        **Other skin lesion**, or
+        **Unsupported image**.
+        """
+    )
 
 
 # =========================================================
-# ANALYZE PAGE
+# ANALYZE
 # =========================================================
 
 if page == "Analyze":
 
-    disclaimer_html = dedent(
+    st.warning(
         """
-        <div class="disclaimer">
-            <b>Important:</b><br><br>
+        **Important:** DermaSense AI is an educational
+        machine-learning prototype.
 
-            DermaSense AI is an educational
-            machine-learning prototype.
-
-            Its output must not be treated as a
-            medical diagnosis or used instead of
-            evaluation by a qualified healthcare
-            professional.
-        </div>
+        Its output is not a medical diagnosis and should
+        not replace evaluation by a qualified healthcare
+        professional.
         """
-    )
-
-    st.markdown(
-        disclaimer_html,
-        unsafe_allow_html=True,
     )
 
     st.write("")
-
-
-    # -----------------------------------------------------
-    # LOAD MODEL
-    # -----------------------------------------------------
 
     model = None
     metadata = {}
@@ -521,13 +310,12 @@ if page == "Analyze":
         try:
 
             model = load_trained_model()
-
             metadata = load_metadata()
 
         except Exception as exc:
 
             st.error(
-                f"Model exists but could not be loaded: {exc}"
+                f"Model could not be loaded: {exc}"
             )
 
 
@@ -537,28 +325,29 @@ if page == "Analyze":
     )
 
 
-    # -----------------------------------------------------
+    # =====================================================
     # UPLOAD
-    # -----------------------------------------------------
+    # =====================================================
 
     with left:
 
-        st.markdown(
-            "### 1. Upload image"
+        st.header(
+            "1. Upload image"
         )
 
         st.caption(
-            "Upload a clear image for AI analysis."
+            "Upload a clear JPG, JPEG, or PNG image."
         )
 
         uploaded = st.file_uploader(
-            "Choose a JPG, JPEG, or PNG image",
+            "Choose image",
             type=[
                 "jpg",
                 "jpeg",
                 "png",
             ],
             accept_multiple_files=False,
+            label_visibility="collapsed",
         )
 
         image = None
@@ -585,49 +374,45 @@ if page == "Analyze":
             ):
 
                 st.error(
-                    "This file could not be read "
-                    "as a valid image."
+                    "The uploaded file is not a valid image."
                 )
 
 
-    # -----------------------------------------------------
+    # =====================================================
     # ANALYSIS
-    # -----------------------------------------------------
+    # =====================================================
 
     with right:
 
-        st.markdown(
-            "### 2. AI Analysis"
+        st.header(
+            "2. AI Analysis"
         )
 
         if model is None:
 
-            st.info(
+            st.error(
                 "The trained CNN model is not available."
             )
 
 
         elif image is None:
 
-            waiting_html = dedent(
-                """
-                <div class="card">
-                    <div class="card-title">
-                        Waiting for an image
-                    </div>
+            with st.container(
+                border=True
+            ):
 
-                    <div class="muted">
-                        Upload an image on the left.
-                        The Analyze button will appear here.
-                    </div>
-                </div>
-                """
-            )
+                st.subheader(
+                    "Waiting for an image"
+                )
 
-            st.markdown(
-                waiting_html,
-                unsafe_allow_html=True,
-            )
+                st.write(
+                    """
+                    Upload an image on the left.
+
+                    The **Analyze Image** button will
+                    appear here.
+                    """
+                )
 
 
         else:
@@ -638,7 +423,7 @@ if page == "Analyze":
             ):
 
                 with st.spinner(
-                    "DermaSense AI is analyzing the image..."
+                    "DermaSense AI is analyzing..."
                 ):
 
                     result = predict_lesion(
@@ -669,125 +454,161 @@ if page == "Analyze":
                 ]
 
 
-                band, css_class = result_style(
-                    prediction
-                )
+                # =========================================
+                # HISTORY LABEL
+                # =========================================
 
+                if prediction == "Benign-like":
 
-                # -------------------------------------------------
-                # SAVE HISTORY
-                # -------------------------------------------------
+                    history_band = (
+                        "Benign-like pattern"
+                    )
+
+                elif prediction == (
+                    "Melanoma-suspicious"
+                ):
+
+                    history_band = (
+                        "Suspicious model pattern"
+                    )
+
+                elif prediction == (
+                    "Other skin lesion"
+                ):
+
+                    history_band = (
+                        "Other lesion detected"
+                    )
+
+                elif prediction == (
+                    "Unsupported image"
+                ):
+
+                    history_band = (
+                        "Unsupported image"
+                    )
+
+                else:
+
+                    history_band = (
+                        "Low-confidence result"
+                    )
+
 
                 add_history(
                     uploaded.name,
                     prediction,
                     confidence,
                     melanoma_score,
-                    band,
+                    history_band,
                 )
 
 
-                # -------------------------------------------------
-                # RESULT CARD
-                # -------------------------------------------------
+                # =========================================
+                # RESULT
+                # =========================================
 
-                result_html = dedent(
-                    f"""
-                    <div class="card">
-                        <div class="card-title">
-                            AI Prediction
-                        </div>
+                with st.container(
+                    border=True
+                ):
 
-                        <div class="score">
-                            {prediction}
-                        </div>
+                    st.caption(
+                        "AI PREDICTION"
+                    )
 
-                        <span class="tag {css_class}">
-                            {band}
-                        </span>
+                    st.title(
+                        prediction
+                    )
 
-                        <br><br>
-
-                        <div class="muted">
-                            Model confidence
-                        </div>
-
-                        <div style="
-                            font-size:1.5rem;
-                            font-weight:900;
-                        ">
-                            {confidence * 100:.1f}%
-                        </div>
-                    </div>
-                    """
-                )
-
-                st.markdown(
-                    result_html,
-                    unsafe_allow_html=True,
-                )
-
-                st.write("")
-
-
-                # -------------------------------------------------
-                # CLASS MESSAGE
-                # -------------------------------------------------
-
-                if prediction == "Unsupported image":
-
-                    st.warning(
-                        "This image does not appear similar "
-                        "to the supported skin-lesion classes. "
-                        "Please upload a clear skin-lesion image."
+                    st.metric(
+                        "Model Confidence",
+                        f"{confidence * 100:.1f}%",
                     )
 
 
-                elif prediction == "Uncertain / Unsupported":
+                # =========================================
+                # MESSAGE
+                # =========================================
+
+                if prediction == (
+                    "Unsupported image"
+                ):
 
                     st.warning(
-                        "The model is not confident enough "
-                        "to provide a reliable classification. "
-                        "Please try a clearer image."
+                        """
+                        This image appears to be outside
+                        the supported skin-lesion classes.
+
+                        Please upload a clear skin-lesion
+                        image.
+                        """
                     )
 
 
-                elif prediction == "Other skin lesion":
+                elif prediction == (
+                    "Uncertain / Unsupported"
+                ):
+
+                    st.warning(
+                        """
+                        The model is not confident enough
+                        to give a reliable classification.
+
+                        Try a clearer or closer image.
+                        """
+                    )
+
+
+                elif prediction == (
+                    "Other skin lesion"
+                ):
 
                     st.info(
-                        "The image appears closer to the "
-                        "model's 'other skin lesion' category "
-                        "than to its benign or melanoma classes."
+                        """
+                        The image appears closer to the
+                        model's **other skin lesion**
+                        category than to benign or melanoma.
+                        """
                     )
 
 
-                elif prediction == "Melanoma-suspicious":
+                elif prediction == (
+                    "Melanoma-suspicious"
+                ):
 
                     st.warning(
-                        "The model found visual patterns "
-                        "more similar to its melanoma "
-                        "training examples. "
-                        "This does not confirm melanoma."
+                        """
+                        The model found patterns similar
+                        to its melanoma training examples.
+
+                        **This does not confirm melanoma.**
+                        """
                     )
 
 
-                elif prediction == "Benign-like":
+                elif prediction == (
+                    "Benign-like"
+                ):
 
-                    st.info(
-                        "The model found visual patterns "
-                        "more similar to its benign "
-                        "training examples. "
-                        "This does not rule out a medical condition."
+                    st.success(
+                        """
+                        The model found patterns similar
+                        to its benign training examples.
+
+                        **This does not rule out a medical
+                        condition.**
+                        """
                     )
 
 
-                # -------------------------------------------------
-                # PROBABILITY BREAKDOWN
-                # -------------------------------------------------
+                # =========================================
+                # PROBABILITIES
+                # =========================================
 
-                st.markdown(
-                    "### Probability Breakdown"
+                st.subheader(
+                    "Probability Breakdown"
                 )
+
 
                 labels = {
                     "benign":
@@ -800,7 +621,7 @@ if page == "Analyze":
                         "Other skin lesion",
 
                     "non_skin":
-                        "Non-skin / unsupported",
+                        "Unsupported / Non-skin",
                 }
 
 
@@ -835,7 +656,7 @@ if page == "Analyze":
 
 
                 st.caption(
-                    f"Processed image size: "
+                    f"Processed at "
                     f"{result['image_size']} × "
                     f"{result['image_size']} pixels"
                 )
@@ -844,24 +665,28 @@ if page == "Analyze":
                 if low_confidence:
 
                     st.caption(
-                        "Low-confidence safety rule applied."
+                        "⚠️ Low-confidence safety rule applied."
                     )
 
 
 # =========================================================
-# HISTORY PAGE
+# HISTORY
 # =========================================================
 
 elif page == "History":
 
-    st.markdown(
-        "### Analysis History"
+    st.header(
+        "Analysis History"
     )
 
     st.caption(
-        "DermaSense stores only the filename and "
-        "model-result information. "
-        "Uploaded images are not stored in history."
+        """
+        DermaSense stores the filename and prediction
+        information only.
+
+        Uploaded images themselves are not stored
+        in the history database.
+        """
     )
 
 
@@ -985,7 +810,7 @@ elif page == "History":
 
 
         if st.button(
-            "Clear History"
+            "🗑️ Clear History"
         ):
 
             clear_history()
@@ -1001,7 +826,7 @@ elif page == "History":
 # FOOTER
 # =========================================================
 
-st.markdown("---")
+st.divider()
 
 st.caption(
     "DermaSense AI • Custom 4-Class CNN • "
