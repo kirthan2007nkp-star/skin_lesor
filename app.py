@@ -92,14 +92,17 @@ st.markdown(
     div.stButton > button {
         border-radius: 14px;
         border: 1px solid #286c7b;
-        background: linear-gradient(
-            135deg,
-            #126c79,
-            #245a96
-        );
+
+        background:
+            linear-gradient(
+                135deg,
+                #126c79,
+                #245a96
+            );
+
         color: white;
         font-weight: 800;
-        min-height: 46px;
+        min-height: 42px;
     }
 
     div.stButton > button:hover {
@@ -150,8 +153,80 @@ def add_history(
     melanoma_score,
     score_band,
 ):
+    """
+    Adds a history record.
+
+    If the exact same result was stored in the
+    last few seconds, it will not be stored again.
+    """
+
+    current_time = datetime.now()
 
     with sqlite3.connect(DB_PATH) as conn:
+
+        last_record = conn.execute(
+            """
+            SELECT
+                timestamp,
+                filename,
+                prediction,
+                confidence,
+                melanoma_score
+            FROM history
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+
+        if last_record is not None:
+
+            (
+                last_timestamp,
+                last_filename,
+                last_prediction,
+                last_confidence,
+                last_melanoma_score,
+            ) = last_record
+
+
+            try:
+
+                previous_time = datetime.strptime(
+                    last_timestamp,
+                    "%Y-%m-%d %H:%M:%S",
+                )
+
+                seconds_difference = (
+                    current_time - previous_time
+                ).total_seconds()
+
+            except ValueError:
+
+                seconds_difference = 999
+
+
+            same_result = (
+                last_filename == filename
+                and last_prediction == prediction
+                and abs(
+                    float(last_confidence)
+                    - float(confidence)
+                ) < 0.0001
+                and abs(
+                    float(last_melanoma_score)
+                    - float(melanoma_score)
+                ) < 0.0001
+            )
+
+
+            if (
+                same_result
+                and seconds_difference <= 10
+            ):
+
+                return False
+
 
         conn.execute(
             """
@@ -167,7 +242,7 @@ def add_history(
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
-                datetime.now().strftime(
+                current_time.strftime(
                     "%Y-%m-%d %H:%M:%S"
                 ),
                 filename,
@@ -179,6 +254,8 @@ def add_history(
         )
 
         conn.commit()
+
+    return True
 
 
 def read_history():
@@ -194,6 +271,23 @@ def read_history():
             """,
             conn,
         )
+
+
+def delete_history(history_id):
+
+    with sqlite3.connect(DB_PATH) as conn:
+
+        conn.execute(
+            """
+            DELETE FROM history
+            WHERE id = ?
+            """,
+            (
+                int(history_id),
+            ),
+        )
+
+        conn.commit()
 
 
 def clear_history():
@@ -216,7 +310,9 @@ init_db()
 
 with st.sidebar:
 
-    st.title("🔬 DermaSense AI")
+    st.title(
+        "🔬 DermaSense AI"
+    )
 
     st.caption(
         "4-Class Skin Image Classifier"
@@ -233,6 +329,7 @@ with st.sidebar:
 
     st.divider()
 
+
     if MODEL_PATH.exists():
 
         st.success(
@@ -244,6 +341,7 @@ with st.sidebar:
         st.warning(
             "Model not trained yet"
         )
+
 
     st.caption(
         "Custom CNN trained from scratch."
@@ -262,7 +360,9 @@ with st.sidebar:
 # HEADER
 # =========================================================
 
-with st.container(border=True):
+with st.container(
+    border=True
+):
 
     st.caption(
         "AI-POWERED SKIN IMAGE ANALYSIS"
@@ -284,7 +384,7 @@ with st.container(border=True):
 
 
 # =========================================================
-# ANALYZE
+# ANALYZE PAGE
 # =========================================================
 
 if page == "Analyze":
@@ -302,14 +402,21 @@ if page == "Analyze":
 
     st.write("")
 
+
+    # -----------------------------------------------------
+    # LOAD MODEL
+    # -----------------------------------------------------
+
     model = None
     metadata = {}
+
 
     if MODEL_PATH.exists():
 
         try:
 
             model = load_trained_model()
+
             metadata = load_metadata()
 
         except Exception as exc:
@@ -320,13 +427,16 @@ if page == "Analyze":
 
 
     left, right = st.columns(
-        [1.05, 0.95],
+        [
+            1.05,
+            0.95,
+        ],
         gap="large",
     )
 
 
     # =====================================================
-    # UPLOAD
+    # IMAGE UPLOAD
     # =====================================================
 
     with left:
@@ -339,6 +449,7 @@ if page == "Analyze":
             "Upload a clear JPG, JPEG, or PNG image."
         )
 
+
         uploaded = st.file_uploader(
             "Choose image",
             type=[
@@ -350,7 +461,9 @@ if page == "Analyze":
             label_visibility="collapsed",
         )
 
+
         image = None
+
 
         if uploaded is not None:
 
@@ -362,11 +475,13 @@ if page == "Analyze":
                     io.BytesIO(raw)
                 ).convert("RGB")
 
+
                 st.image(
                     image,
                     caption=uploaded.name,
                     use_container_width=True,
                 )
+
 
             except (
                 UnidentifiedImageError,
@@ -387,6 +502,7 @@ if page == "Analyze":
         st.header(
             "2. AI Analysis"
         )
+
 
         if model is None:
 
@@ -464,6 +580,7 @@ if page == "Analyze":
                         "Benign-like pattern"
                     )
 
+
                 elif prediction == (
                     "Melanoma-suspicious"
                 ):
@@ -471,6 +588,7 @@ if page == "Analyze":
                     history_band = (
                         "Suspicious model pattern"
                     )
+
 
                 elif prediction == (
                     "Other skin lesion"
@@ -480,6 +598,7 @@ if page == "Analyze":
                         "Other lesion detected"
                     )
 
+
                 elif prediction == (
                     "Unsupported image"
                 ):
@@ -488,6 +607,7 @@ if page == "Analyze":
                         "Unsupported image"
                     )
 
+
                 else:
 
                     history_band = (
@@ -495,7 +615,7 @@ if page == "Analyze":
                     )
 
 
-                add_history(
+                history_saved = add_history(
                     uploaded.name,
                     prediction,
                     confidence,
@@ -527,7 +647,7 @@ if page == "Analyze":
 
 
                 # =========================================
-                # MESSAGE
+                # CLASS MESSAGE
                 # =========================================
 
                 if prediction == (
@@ -536,8 +656,8 @@ if page == "Analyze":
 
                     st.warning(
                         """
-                        This image appears to be outside
-                        the supported skin-lesion classes.
+                        This image appears outside the
+                        supported skin-lesion classes.
 
                         Please upload a clear skin-lesion
                         image.
@@ -552,9 +672,9 @@ if page == "Analyze":
                     st.warning(
                         """
                         The model is not confident enough
-                        to give a reliable classification.
+                        to provide a reliable classification.
 
-                        Try a clearer or closer image.
+                        Try a clearer or closer skin image.
                         """
                     )
 
@@ -566,7 +686,7 @@ if page == "Analyze":
                     st.info(
                         """
                         The image appears closer to the
-                        model's **other skin lesion**
+                        model's **Other skin lesion**
                         category than to benign or melanoma.
                         """
                     )
@@ -602,7 +722,7 @@ if page == "Analyze":
 
 
                 # =========================================
-                # PROBABILITIES
+                # PROBABILITY BREAKDOWN
                 # =========================================
 
                 st.subheader(
@@ -611,6 +731,7 @@ if page == "Analyze":
 
 
                 labels = {
+
                     "benign":
                         "Benign-like",
 
@@ -639,10 +760,12 @@ if page == "Analyze":
                         )
                     )
 
+
                     st.write(
                         f"**{labels[key]}:** "
                         f"{value * 100:.1f}%"
                     )
+
 
                     st.progress(
                         max(
@@ -670,7 +793,7 @@ if page == "Analyze":
 
 
 # =========================================================
-# HISTORY
+# HISTORY PAGE
 # =========================================================
 
 elif page == "History":
@@ -678,6 +801,7 @@ elif page == "History":
     st.header(
         "Analysis History"
     )
+
 
     st.caption(
         """
@@ -702,7 +826,13 @@ elif page == "History":
 
     else:
 
-        c1, c2, c3, c4 = st.columns(4)
+        # =================================================
+        # SUMMARY
+        # =================================================
+
+        c1, c2, c3, c4 = st.columns(
+            4
+        )
 
 
         c1.metric(
@@ -749,74 +879,129 @@ elif page == "History":
         )
 
 
-        display = history[
+        st.write("")
+
+
+        # =================================================
+        # HISTORY LIST
+        # =================================================
+
+        st.subheader(
+            "Saved Analyses"
+        )
+
+
+        header = st.columns(
             [
-                "timestamp",
-                "filename",
-                "prediction",
-                "confidence",
-                "melanoma_score",
+                1.8,
+                2.3,
+                2,
+                1.2,
+                1.2,
+                0.8,
             ]
-        ].copy()
+        )
 
 
-        display["confidence"] = (
-            (
-                display["confidence"]
-                * 100
+        header[0].markdown(
+            "**Time**"
+        )
+
+        header[1].markdown(
+            "**Image**"
+        )
+
+        header[2].markdown(
+            "**Prediction**"
+        )
+
+        header[3].markdown(
+            "**Confidence**"
+        )
+
+        header[4].markdown(
+            "**Melanoma**"
+        )
+
+        header[5].markdown(
+            "**Action**"
+        )
+
+
+        st.divider()
+
+
+        for _, row in history.iterrows():
+
+            cols = st.columns(
+                [
+                    1.8,
+                    2.3,
+                    2,
+                    1.2,
+                    1.2,
+                    0.8,
+                ]
             )
-            .round(1)
-            .astype(str)
-            + "%"
-        )
 
 
-        display["melanoma_score"] = (
-            (
-                display["melanoma_score"]
-                * 100
+            cols[0].write(
+                row["timestamp"]
             )
-            .round(1)
-            .astype(str)
-            + "%"
-        )
 
 
-        display = display.rename(
-            columns={
-                "timestamp":
-                    "Time",
-
-                "filename":
-                    "Image",
-
-                "prediction":
-                    "Prediction",
-
-                "confidence":
-                    "Confidence",
-
-                "melanoma_score":
-                    "Melanoma Score",
-            }
-        )
+            cols[1].write(
+                row["filename"]
+            )
 
 
-        st.dataframe(
-            display,
-            use_container_width=True,
-            hide_index=True,
-        )
+            cols[2].write(
+                row["prediction"]
+            )
+
+
+            cols[3].write(
+                f"{float(row['confidence']) * 100:.1f}%"
+            )
+
+
+            cols[4].write(
+                f"{float(row['melanoma_score']) * 100:.1f}%"
+            )
+
+
+            if cols[5].button(
+                "🗑️",
+                key=f"delete_history_{int(row['id'])}",
+                help="Delete this history record",
+            ):
+
+                delete_history(
+                    int(row["id"])
+                )
+
+                st.rerun()
+
+
+            st.divider()
+
+
+        # =================================================
+        # CLEAR ALL
+        # =================================================
+
+        st.write("")
 
 
         if st.button(
-            "🗑️ Clear History"
+            "🗑️ Clear All History",
+            type="primary",
         ):
 
             clear_history()
 
             st.success(
-                "History cleared."
+                "All history records deleted."
             )
 
             st.rerun()
