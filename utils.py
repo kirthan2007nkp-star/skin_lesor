@@ -115,38 +115,32 @@ def predict_lesion(
     )
 
 
-    probabilities = np.asarray(
+    raw_probabilities = np.asarray(
         predictions[0],
         dtype=float,
     )
 
 
-    predicted_index = int(
-        np.argmax(probabilities)
-    )
-
-
-    confidence = float(
-        probabilities[
-            predicted_index
-        ]
-    )
-
-
-    class_key = class_names[
-        predicted_index
-    ]
-
-
     probability_map = {
-
         class_names[index]:
-            float(probabilities[index])
+            float(raw_probabilities[index])
 
         for index in range(
             len(class_names)
         )
     }
+
+
+    # ---------------------------------------------
+    # FINAL 3 RESULTS
+    # ---------------------------------------------
+
+    benign_score = float(
+        probability_map.get(
+            "benign",
+            0.0,
+        )
+    )
 
 
     melanoma_score = float(
@@ -157,8 +151,47 @@ def predict_lesion(
     )
 
 
-    labels = {
+    # Combine the model's two rejection categories
+    # into one simple result called "Other".
+    other_score = float(
+        probability_map.get(
+            "other",
+            0.0,
+        )
+        +
+        probability_map.get(
+            "non_skin",
+            0.0,
+        )
+    )
 
+
+    final_probabilities = {
+        "benign":
+            benign_score,
+
+        "melanoma":
+            melanoma_score,
+
+        "other":
+            other_score,
+    }
+
+
+    best_class = max(
+        final_probabilities,
+        key=final_probabilities.get,
+    )
+
+
+    confidence = float(
+        final_probabilities[
+            best_class
+        ]
+    )
+
+
+    labels = {
         "benign":
             "Benign-like",
 
@@ -166,26 +199,21 @@ def predict_lesion(
             "Melanoma-suspicious",
 
         "other":
-            "Other skin lesion",
-
-        "non_skin":
-            "Unsupported image",
+            "Other",
     }
 
 
-    prediction_label = labels.get(
-        class_key,
-        class_key,
-    )
+    prediction_label = labels[
+        best_class
+    ]
 
 
     return {
-
         "prediction":
             prediction_label,
 
         "class_key":
-            class_key,
+            best_class,
 
         "confidence":
             confidence,
@@ -194,14 +222,11 @@ def predict_lesion(
             melanoma_score,
 
         "probabilities":
-            probability_map,
+            final_probabilities,
 
         "image_size":
             image_size,
 
         "low_confidence":
             False,
-
-        "rejection_reason":
-            None,
     }
