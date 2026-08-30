@@ -1,15 +1,26 @@
 {
   "project": "DermaSense AI",
-  "architecture": "Custom CNN trained from scratch",
+  "architecture": "Custom 4-class CNN trained from scratch",
   "pretrained": false,
   "class_names": [
     "benign",
-    "melanoma"
+    "melanoma",
+    "non_skin",
+    "other"
   ],
   "image_size": 224,
-  "threshold": 0.5,
-  "benign_images": 1305,
-  "melanoma_images": 1305,
+  "classes": {
+    "benign": "Benign-like skin lesion",
+    "melanoma": "Melanoma-suspicious skin lesion",
+    "other": "Other skin lesion",
+    "non_skin": "Unsupported non-skin image"
+  },
+  "dataset_counts": {
+    "benign": 1305,
+    "melanoma": 1305,
+    "non_skin": 1000,
+    "other": 1000
+  },
   "validation_split": 0.2,
   "seed": 42,
   "note": "Educational AI prototype. Not a medical diagnostic device."

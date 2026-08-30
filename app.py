@@ -19,6 +19,10 @@ APP_TITLE = "DermaSense AI"
 DB_PATH = Path("data") / "analysis_history.db"
 
 
+# =========================================================
+# PAGE CONFIG
+# =========================================================
+
 st.set_page_config(
     page_title=f"{APP_TITLE} | Skin Lesion Classifier",
     page_icon="🔬",
@@ -27,273 +31,277 @@ st.set_page_config(
 )
 
 
+# =========================================================
+# CSS
+# =========================================================
+
 CUSTOM_CSS = """
 <style>
 
 :root {
-  --bg:#07111f;
-  --panel:#0b1728;
-  --panel2:#0f2035;
-  --border:#1d3853;
-  --text:#edf7ff;
-  --muted:#9fb6c9;
-  --cyan:#38d6d2;
-  --blue:#5fa8ff;
-  --amber:#ffce6b;
-  --red:#ff7b8a;
-  --green:#76e2a8;
+    --bg: #07111f;
+    --panel: #0b1728;
+    --panel2: #0f2035;
+    --border: #1d3853;
+    --text: #edf7ff;
+    --muted: #9fb6c9;
+    --cyan: #38d6d2;
+    --blue: #5fa8ff;
+    --amber: #ffce6b;
+    --red: #ff7b8a;
+    --green: #76e2a8;
 }
 
 .stApp {
-  background:
-    radial-gradient(
-      circle at 10% 5%,
-      rgba(56,214,210,.10),
-      transparent 28%
-    ),
-    radial-gradient(
-      circle at 95% 15%,
-      rgba(95,168,255,.10),
-      transparent 25%
-    ),
-    linear-gradient(
-      180deg,
-      #06101d 0%,
-      #081422 100%
-    );
+    background:
+        radial-gradient(
+            circle at 10% 5%,
+            rgba(56,214,210,.10),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 95% 15%,
+            rgba(95,168,255,.10),
+            transparent 25%
+        ),
+        linear-gradient(
+            180deg,
+            #06101d 0%,
+            #081422 100%
+        );
 
-  color: var(--text);
+    color: var(--text);
 }
 
 
 .block-container {
-  padding-top: 1.8rem;
-  padding-bottom: 3rem;
-  max-width: 1200px;
+    padding-top: 1.8rem;
+    padding-bottom: 3rem;
+    max-width: 1200px;
 }
 
 
 [data-testid="stSidebar"] {
-  background:
-    linear-gradient(
-      180deg,
-      #071321,
-      #091a2b
-    );
+    background:
+        linear-gradient(
+            180deg,
+            #071321,
+            #091a2b
+        );
 
-  border-right: 1px solid var(--border);
+    border-right: 1px solid var(--border);
 }
 
 
 .hero {
-  padding: 26px 28px;
+    padding: 26px 28px;
 
-  border: 1px solid var(--border);
+    border: 1px solid var(--border);
 
-  border-radius: 24px;
+    border-radius: 24px;
 
-  background:
-    linear-gradient(
-      135deg,
-      rgba(12,31,51,.95),
-      rgba(7,20,34,.95)
-    );
+    background:
+        linear-gradient(
+            135deg,
+            rgba(12,31,51,.95),
+            rgba(7,20,34,.95)
+        );
 
-  box-shadow:
-    0 16px 45px rgba(0,0,0,.20);
+    box-shadow:
+        0 16px 45px rgba(0,0,0,.20);
 
-  margin-bottom: 1rem;
+    margin-bottom: 1rem;
 }
 
 
 .hero-kicker {
-  color: var(--cyan);
+    color: var(--cyan);
 
-  letter-spacing: .14em;
+    letter-spacing: .14em;
 
-  font-size: .75rem;
+    font-size: .75rem;
 
-  font-weight: 800;
+    font-weight: 800;
 
-  text-transform: uppercase;
+    text-transform: uppercase;
 }
 
 
 .hero h1 {
-  margin: .25rem 0 .4rem;
+    margin: .25rem 0 .4rem;
 
-  font-size: 2.45rem;
+    font-size: 2.45rem;
 
-  line-height: 1.05;
+    line-height: 1.05;
 }
 
 
 .hero p {
-  color: var(--muted);
+    color: var(--muted);
 
-  margin: 0;
+    margin: 0;
 
-  max-width: 850px;
+    max-width: 850px;
 
-  font-size: 1.02rem;
+    font-size: 1.02rem;
 }
 
 
 .card {
-  border: 1px solid var(--border);
+    border: 1px solid var(--border);
 
-  border-radius: 20px;
+    border-radius: 20px;
 
-  padding: 19px 20px;
+    padding: 19px 20px;
 
-  background: rgba(11,23,40,.92);
+    background: rgba(11,23,40,.92);
 
-  min-height: 100%;
+    min-height: 100%;
 }
 
 
 .card-title {
-  font-weight: 800;
+    font-weight: 800;
 
-  font-size: 1rem;
+    font-size: 1rem;
 
-  margin-bottom: .35rem;
+    margin-bottom: .35rem;
 }
 
 
 .muted {
-  color: var(--muted);
+    color: var(--muted);
 }
 
 
 .score {
-  font-size: 2.1rem;
+    font-size: 2rem;
 
-  font-weight: 900;
+    font-weight: 900;
 
-  line-height: 1;
+    line-height: 1.1;
 
-  margin: .2rem 0 .5rem;
+    margin: .3rem 0 .6rem;
 }
 
 
 .tag {
-  display: inline-block;
+    display: inline-block;
 
-  border-radius: 999px;
+    border-radius: 999px;
 
-  padding: 7px 11px;
+    padding: 7px 11px;
 
-  border: 1px solid var(--border);
+    border: 1px solid var(--border);
 
-  background: #10243a;
+    background: #10243a;
 
-  font-weight: 800;
+    font-weight: 800;
 }
 
 
 .good {
-  color: var(--green);
+    color: var(--green);
 }
 
 
 .warn {
-  color: var(--amber);
+    color: var(--amber);
 }
 
 
 .alert {
-  color: var(--red);
+    color: var(--red);
+}
+
+
+.blue {
+    color: var(--blue);
 }
 
 
 .info-strip {
-  border: 1px solid #244767;
+    border: 1px solid #244767;
 
-  border-left: 4px solid var(--blue);
+    border-left: 4px solid var(--blue);
 
-  border-radius: 14px;
+    border-radius: 14px;
 
-  padding: 12px 14px;
+    padding: 12px 14px;
 
-  background: #0d1d30;
+    background: #0d1d30;
 
-  color: #cfe6f7;
+    color: #cfe6f7;
 }
 
 
 .disclaimer {
-  border: 1px solid #664d1f;
+    border: 1px solid #664d1f;
 
-  border-left: 4px solid var(--amber);
+    border-left: 4px solid var(--amber);
 
-  border-radius: 14px;
+    border-radius: 14px;
 
-  padding: 12px 14px;
+    padding: 12px 14px;
 
-  background: rgba(87,62,14,.20);
+    background: rgba(87,62,14,.20);
 
-  color: #ffe7ad;
+    color: #ffe7ad;
 }
 
 
 div.stButton > button {
+    border-radius: 14px;
 
-  border-radius: 14px;
+    border: 1px solid #286c7b;
 
-  border: 1px solid #286c7b;
+    background:
+        linear-gradient(
+            135deg,
+            #126c79,
+            #245a96
+        );
 
-  background:
-    linear-gradient(
-      135deg,
-      #126c79,
-      #245a96
-    );
+    color: white;
 
-  color: white;
+    font-weight: 800;
 
-  font-weight: 800;
-
-  min-height: 46px;
+    min-height: 46px;
 }
 
 
 div.stButton > button:hover {
-
-  border-color: #48e4dd;
-
-  color: white;
+    border-color: #48e4dd;
+    color: white;
 }
 
 
 [data-testid="stFileUploader"] {
+    border: 1px dashed #2c607a;
 
-  border: 1px dashed #2c607a;
+    border-radius: 18px;
 
-  border-radius: 18px;
+    padding: 10px;
 
-  padding: 10px;
-
-  background:
-    rgba(10,29,47,.75);
+    background:
+        rgba(10,29,47,.75);
 }
 
 
 [data-testid="stMetric"] {
+    background:
+        rgba(11,23,40,.9);
 
-  background:
-    rgba(11,23,40,.9);
+    border: 1px solid var(--border);
 
-  border: 1px solid var(--border);
+    padding: 13px 15px;
 
-  padding: 13px 15px;
-
-  border-radius: 16px;
+    border-radius: 16px;
 }
 
 
 hr {
-  border-color: #17324a;
+    border-color: #17324a;
 }
 
 </style>
@@ -302,19 +310,19 @@ hr {
 
 st.markdown(
     CUSTOM_CSS,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
-# -------------------------------------------------
+# =========================================================
 # DATABASE
-# -------------------------------------------------
+# =========================================================
 
 def init_db():
 
     DB_PATH.parent.mkdir(
         parents=True,
-        exist_ok=True
+        exist_ok=True,
     )
 
     with sqlite3.connect(DB_PATH) as conn:
@@ -406,32 +414,55 @@ def clear_history():
         conn.commit()
 
 
-def get_band(score):
+init_db()
 
-    if score < 0.35:
+
+# =========================================================
+# RESULT HELPERS
+# =========================================================
+
+def result_style(
+    prediction,
+    confidence,
+):
+
+    if prediction == "Benign-like":
+
         return (
-            "Lower model score",
+            "Benign-like pattern",
             "good",
         )
 
-    if score < 0.65:
+    if prediction == "Melanoma-suspicious":
+
         return (
-            "Uncertain model score",
+            "Suspicious model pattern",
+            "alert",
+        )
+
+    if prediction == "Other skin lesion":
+
+        return (
+            "Different lesion type detected",
+            "blue",
+        )
+
+    if prediction == "Unsupported image":
+
+        return (
+            "Non-skin / unsupported image",
             "warn",
         )
 
     return (
-        "Higher model score",
-        "alert",
+        "Low-confidence result",
+        "warn",
     )
 
 
-init_db()
-
-
-# -------------------------------------------------
+# =========================================================
 # SIDEBAR
-# -------------------------------------------------
+# =========================================================
 
 with st.sidebar:
 
@@ -440,7 +471,7 @@ with st.sidebar:
     )
 
     st.caption(
-        "Skin Lesion Classifier • Custom CNN"
+        "4-Class Skin Image Classifier"
     )
 
     page = st.radio(
@@ -471,33 +502,37 @@ with st.sidebar:
     )
 
     st.caption(
-        "Educational prototype. "
-        "Not a clinical diagnostic device."
+        "Educational AI prototype."
+    )
+
+    st.caption(
+        "Not a medical diagnostic device."
     )
 
 
-# -------------------------------------------------
+# =========================================================
 # HERO
-# -------------------------------------------------
+# =========================================================
 
 st.markdown(
     """
     <div class="hero">
 
-      <div class="hero-kicker">
-        AI-Powered Skin Lesion Analysis
-      </div>
+        <div class="hero-kicker">
+            AI-Powered Skin Image Analysis
+        </div>
 
-      <h1>
-        Skin Lesion Classifier
-      </h1>
+        <h1>
+            Skin Lesion Classifier
+        </h1>
 
-      <p>
-        Upload a skin-lesion image and let our custom
-        Convolutional Neural Network, trained from scratch,
-        analyze whether the image appears benign-like or
-        melanoma-suspicious.
-      </p>
+        <p>
+            Upload an image and let our custom CNN,
+            trained from scratch, classify it as
+            benign-like, melanoma-suspicious,
+            another skin-lesion type, or an
+            unsupported non-skin image.
+        </p>
 
     </div>
     """,
@@ -505,9 +540,9 @@ st.markdown(
 )
 
 
-# -------------------------------------------------
+# =========================================================
 # ANALYZE PAGE
-# -------------------------------------------------
+# =========================================================
 
 if page == "Analyze":
 
@@ -517,11 +552,10 @@ if page == "Analyze":
 
         <b>Important:</b>
 
-        This project is designed only for educational
-        AI demonstration.
-
-        It cannot diagnose melanoma or replace examination
-        by a qualified dermatologist.
+        DermaSense AI is an educational machine-learning
+        prototype. Its output must not be treated as a
+        diagnosis or used instead of evaluation by a
+        qualified healthcare professional.
 
         </div>
         """,
@@ -531,12 +565,12 @@ if page == "Analyze":
     st.write("")
 
 
+    # -----------------------------------------------------
     # LOAD MODEL
+    # -----------------------------------------------------
 
     model = None
-
     metadata = {}
-
 
     if MODEL_PATH.exists():
 
@@ -559,9 +593,9 @@ if page == "Analyze":
     )
 
 
-    # ---------------------------------------------
+    # -----------------------------------------------------
     # IMAGE UPLOAD
-    # ---------------------------------------------
+    # -----------------------------------------------------
 
     with left:
 
@@ -570,11 +604,11 @@ if page == "Analyze":
         )
 
         st.caption(
-            "Upload a clear close-up image of a skin lesion or mole."
+            "Upload a clear image for AI analysis."
         )
 
         uploaded = st.file_uploader(
-            "Choose a JPG, JPEG, or PNG skin-lesion image",
+            "Choose a JPG, JPEG, or PNG image",
             type=[
                 "jpg",
                 "jpeg",
@@ -583,9 +617,7 @@ if page == "Analyze":
             accept_multiple_files=False,
         )
 
-
         image = None
-
 
         if uploaded is not None:
 
@@ -597,13 +629,11 @@ if page == "Analyze":
                     io.BytesIO(raw)
                 ).convert("RGB")
 
-
                 st.image(
                     image,
                     caption=uploaded.name,
                     use_container_width=True,
                 )
-
 
             except (
                 UnidentifiedImageError,
@@ -611,14 +641,14 @@ if page == "Analyze":
             ):
 
                 st.error(
-                    "That file could not be read "
+                    "This file could not be read "
                     "as a valid image."
                 )
 
 
-    # ---------------------------------------------
+    # -----------------------------------------------------
     # AI ANALYSIS
-    # ---------------------------------------------
+    # -----------------------------------------------------
 
     with right:
 
@@ -626,19 +656,10 @@ if page == "Analyze":
             "### 2. AI analysis"
         )
 
-
         if model is None:
 
             st.info(
-                "The custom CNN has not been trained yet. "
-                "Add labeled training images inside "
-                "`dataset/benign` and `dataset/melanoma`, "
-                "then run the training script."
-            )
-
-            st.code(
-                "python train_model.py",
-                language="bash",
+                "The trained CNN model is not available."
             )
 
 
@@ -648,14 +669,14 @@ if page == "Analyze":
                 """
                 <div class="card">
 
-                  <div class="card-title">
-                    Waiting for an image
-                  </div>
+                    <div class="card-title">
+                        Waiting for an image
+                    </div>
 
-                  <div class="muted">
-                    Upload a skin-lesion image on the left.
-                    The Analyze button will appear here.
-                  </div>
+                    <div class="muted">
+                        Upload an image on the left.
+                        The Analyze button will appear here.
+                    </div>
 
                 </div>
                 """,
@@ -666,12 +687,12 @@ if page == "Analyze":
         else:
 
             if st.button(
-                "🔎 Analyze Lesion",
+                "🔎 Analyze Image",
                 use_container_width=True,
             ):
 
                 with st.spinner(
-                    "Custom CNN is analyzing the image..."
+                    "DermaSense AI is analyzing the image..."
                 ):
 
                     result = predict_lesion(
@@ -681,27 +702,40 @@ if page == "Analyze":
                     )
 
 
-                band, css_class = get_band(
-                    result["melanoma_score"]
-                )
-
-
                 prediction = result[
                     "prediction"
                 ]
 
+                class_key = result[
+                    "class_key"
+                ]
 
                 confidence = result[
                     "confidence"
                 ]
 
-
                 melanoma_score = result[
                     "melanoma_score"
                 ]
 
+                probabilities = result[
+                    "probabilities"
+                ]
 
+                low_confidence = result[
+                    "low_confidence"
+                ]
+
+
+                band, css_class = result_style(
+                    prediction,
+                    confidence,
+                )
+
+
+                # -------------------------------------------------
                 # SAVE HISTORY
+                # -------------------------------------------------
 
                 add_history(
                     uploaded.name,
@@ -712,53 +746,38 @@ if page == "Analyze":
                 )
 
 
+                # -------------------------------------------------
                 # RESULT CARD
+                # -------------------------------------------------
 
                 st.markdown(
                     f"""
                     <div class="card">
 
-                      <div class="card-title">
-                        Prediction
-                      </div>
+                        <div class="card-title">
+                            AI Prediction
+                        </div>
 
-                      <div class="score">
-                        {prediction}
-                      </div>
+                        <div class="score">
+                            {prediction}
+                        </div>
 
-                      <span class="tag {css_class}">
-                        {band}
-                      </span>
+                        <span class="tag {css_class}">
+                            {band}
+                        </span>
 
-                      <br><br>
+                        <br><br>
 
+                        <div class="muted">
+                            Model confidence
+                        </div>
 
-                      <div class="muted">
-                        Classification confidence
-                      </div>
-
-                      <div style="
-                        font-size:1.45rem;
-                        font-weight:900;
-                      ">
-                        {confidence * 100:.1f}%
-                      </div>
-
-
-                      <div
-                        class="muted"
-                        style="margin-top:10px"
-                      >
-                        Melanoma-class model score
-                      </div>
-
-
-                      <div style="
-                        font-size:1.25rem;
-                        font-weight:800;
-                      ">
-                        {melanoma_score * 100:.1f}%
-                      </div>
+                        <div style="
+                            font-size:1.5rem;
+                            font-weight:900;
+                        ">
+                            {confidence * 100:.1f}%
+                        </div>
 
                     </div>
                     """,
@@ -766,66 +785,143 @@ if page == "Analyze":
                 )
 
 
-                st.progress(
-                    float(melanoma_score)
+                st.write("")
+
+
+                # -------------------------------------------------
+                # CLASS-SPECIFIC MESSAGE
+                # -------------------------------------------------
+
+                if prediction == "Unsupported image":
+
+                    st.warning(
+                        "This image does not appear similar "
+                        "to the supported skin-lesion classes. "
+                        "Please upload a clear skin-lesion image."
+                    )
+
+
+                elif prediction == "Uncertain / Unsupported":
+
+                    st.warning(
+                        "The model is not confident enough "
+                        "to provide a lesion classification. "
+                        "Try a clearer and closer image."
+                    )
+
+
+                elif prediction == "Other skin lesion":
+
+                    st.info(
+                        "The image appears to represent a skin "
+                        "lesion, but its learned pattern is closer "
+                        "to the model's 'other lesion' category "
+                        "than to benign or melanoma."
+                    )
+
+
+                elif prediction == "Melanoma-suspicious":
+
+                    st.warning(
+                        "The model found visual patterns that "
+                        "are more similar to its melanoma "
+                        "training examples. This result does "
+                        "not confirm melanoma."
+                    )
+
+
+                elif prediction == "Benign-like":
+
+                    st.info(
+                        "The model found visual patterns that "
+                        "are more similar to its benign "
+                        "training examples. This result does "
+                        "not rule out a medical condition."
+                    )
+
+
+                # -------------------------------------------------
+                # PROBABILITY BREAKDOWN
+                # -------------------------------------------------
+
+                st.markdown(
+                    "### Model probability breakdown"
                 )
 
 
-                if (
-                    0.35
-                    <= melanoma_score
-                    < 0.65
-                ):
+                labels = {
+                    "benign":
+                        "Benign-like",
 
-                    st.warning(
-                        "The model score is uncertain. "
-                        "Do not interpret this result "
-                        "as a medical diagnosis."
+                    "melanoma":
+                        "Melanoma",
+
+                    "other":
+                        "Other skin lesion",
+
+                    "non_skin":
+                        "Non-skin / unsupported",
+                }
+
+
+                for key in [
+                    "benign",
+                    "melanoma",
+                    "other",
+                    "non_skin",
+                ]:
+
+                    value = float(
+                        probabilities.get(
+                            key,
+                            0.0,
+                        )
                     )
 
-
-                elif melanoma_score >= 0.65:
-
-                    st.warning(
-                        "The model produced a higher "
-                        "melanoma-class score. "
-                        "This does not confirm melanoma."
+                    st.write(
+                        f"**{labels[key]}:** "
+                        f"{value * 100:.1f}%"
                     )
 
-
-                else:
-
-                    st.info(
-                        "The model produced a lower "
-                        "melanoma-class score. "
-                        "This does not rule out melanoma."
+                    st.progress(
+                        max(
+                            0.0,
+                            min(
+                                value,
+                                1.0,
+                            ),
+                        )
                     )
 
 
                 st.caption(
-                    f"Decision threshold: "
-                    f"{result['threshold']:.2f}"
-                    f" • Image size: "
-                    f"{result['image_size']}×"
-                    f"{result['image_size']}"
+                    f"Processed image size: "
+                    f"{result['image_size']} × "
+                    f"{result['image_size']} pixels"
                 )
 
 
-# -------------------------------------------------
+                if low_confidence:
+
+                    st.caption(
+                        "Low-confidence safety rule applied."
+                    )
+
+
+# =========================================================
 # HISTORY PAGE
-# -------------------------------------------------
+# =========================================================
 
 elif page == "History":
 
     st.markdown(
-        "### Analysis history"
+        "### Analysis History"
     )
 
-
     st.caption(
-        "The app stores the filename and model-result "
-        "information only. Uploaded lesion images "
-        "are not saved."
+        "DermaSense stores the filename and model-result "
+        "information only. The uploaded image itself "
+        "is not stored in the history database."
     )
 
 
@@ -841,11 +937,11 @@ elif page == "History":
 
     else:
 
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3, c4 = st.columns(4)
 
 
         c1.metric(
-            "Analyses",
+            "Total",
             len(history),
         )
 
@@ -862,12 +958,28 @@ elif page == "History":
 
 
         c3.metric(
-            "Melanoma-suspicious",
+            "Melanoma",
             int(
                 (
                     history["prediction"]
                     == "Melanoma-suspicious"
                 ).sum()
+            ),
+        )
+
+
+        c4.metric(
+            "Other / Unsupported",
+            int(
+                history["prediction"]
+                .isin(
+                    [
+                        "Other skin lesion",
+                        "Unsupported image",
+                        "Uncertain / Unsupported",
+                    ]
+                )
+                .sum()
             ),
         )
 
@@ -879,7 +991,6 @@ elif page == "History":
                 "prediction",
                 "confidence",
                 "melanoma_score",
-                "score_band",
             ]
         ].copy()
 
@@ -906,6 +1017,26 @@ elif page == "History":
         )
 
 
+        display = display.rename(
+            columns={
+                "timestamp":
+                    "Time",
+
+                "filename":
+                    "Image",
+
+                "prediction":
+                    "Prediction",
+
+                "confidence":
+                    "Confidence",
+
+                "melanoma_score":
+                    "Melanoma Score",
+            }
+        )
+
+
         st.dataframe(
             display,
             use_container_width=True,
@@ -914,7 +1045,7 @@ elif page == "History":
 
 
         if st.button(
-            "Clear history"
+            "Clear History"
         ):
 
             clear_history()
@@ -926,12 +1057,13 @@ elif page == "History":
             st.rerun()
 
 
-# -------------------------------------------------
+# =========================================================
 # FOOTER
-# -------------------------------------------------
+# =========================================================
 
 st.markdown("---")
 
 st.caption(
-    "DermaSense AI • Custom CNN • Educational use only"
+    "DermaSense AI • Custom 4-Class CNN • "
+    "Trained from scratch • Educational use only"
 )

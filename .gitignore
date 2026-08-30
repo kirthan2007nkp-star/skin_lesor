@@ -2,3 +2,5 @@
 
 dataset/benign/
 dataset/melanoma/
+dataset/other/
+dataset/non_skin/
