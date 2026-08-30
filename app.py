@@ -2,6 +2,7 @@ from pathlib import Path
 import io
 import sqlite3
 from datetime import datetime
+from textwrap import dedent
 
 import pandas as pd
 from PIL import Image, UnidentifiedImageError
@@ -95,9 +96,7 @@ CUSTOM_CSS = """
 
 .hero {
     padding: 26px 28px;
-
     border: 1px solid var(--border);
-
     border-radius: 24px;
 
     background:
@@ -116,55 +115,41 @@ CUSTOM_CSS = """
 
 .hero-kicker {
     color: var(--cyan);
-
     letter-spacing: .14em;
-
     font-size: .75rem;
-
     font-weight: 800;
-
     text-transform: uppercase;
 }
 
 
 .hero h1 {
-    margin: .25rem 0 .4rem;
-
+    margin: .35rem 0 .6rem;
     font-size: 2.45rem;
-
     line-height: 1.05;
 }
 
 
 .hero p {
     color: var(--muted);
-
     margin: 0;
-
-    max-width: 850px;
-
+    max-width: 900px;
     font-size: 1.02rem;
+    line-height: 1.7;
 }
 
 
 .card {
     border: 1px solid var(--border);
-
     border-radius: 20px;
-
     padding: 19px 20px;
-
     background: rgba(11,23,40,.92);
-
     min-height: 100%;
 }
 
 
 .card-title {
     font-weight: 800;
-
     font-size: 1rem;
-
     margin-bottom: .35rem;
 }
 
@@ -176,26 +161,18 @@ CUSTOM_CSS = """
 
 .score {
     font-size: 2rem;
-
     font-weight: 900;
-
     line-height: 1.1;
-
     margin: .3rem 0 .6rem;
 }
 
 
 .tag {
     display: inline-block;
-
     border-radius: 999px;
-
     padding: 7px 11px;
-
     border: 1px solid var(--border);
-
     background: #10243a;
-
     font-weight: 800;
 }
 
@@ -220,39 +197,19 @@ CUSTOM_CSS = """
 }
 
 
-.info-strip {
-    border: 1px solid #244767;
-
-    border-left: 4px solid var(--blue);
-
-    border-radius: 14px;
-
-    padding: 12px 14px;
-
-    background: #0d1d30;
-
-    color: #cfe6f7;
-}
-
-
 .disclaimer {
     border: 1px solid #664d1f;
-
     border-left: 4px solid var(--amber);
-
     border-radius: 14px;
-
-    padding: 12px 14px;
-
+    padding: 14px 16px;
     background: rgba(87,62,14,.20);
-
     color: #ffe7ad;
+    line-height: 1.7;
 }
 
 
 div.stButton > button {
     border-radius: 14px;
-
     border: 1px solid #286c7b;
 
     background:
@@ -263,9 +220,7 @@ div.stButton > button {
         );
 
     color: white;
-
     font-weight: 800;
-
     min-height: 46px;
 }
 
@@ -278,24 +233,16 @@ div.stButton > button:hover {
 
 [data-testid="stFileUploader"] {
     border: 1px dashed #2c607a;
-
     border-radius: 18px;
-
     padding: 10px;
-
-    background:
-        rgba(10,29,47,.75);
+    background: rgba(10,29,47,.75);
 }
 
 
 [data-testid="stMetric"] {
-    background:
-        rgba(11,23,40,.9);
-
+    background: rgba(11,23,40,.9);
     border: 1px solid var(--border);
-
     padding: 13px 15px;
-
     border-radius: 16px;
 }
 
@@ -306,7 +253,6 @@ hr {
 
 </style>
 """
-
 
 st.markdown(
     CUSTOM_CSS,
@@ -365,22 +311,16 @@ def add_history(
                 melanoma_score,
                 score_band
             )
-
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 datetime.now().strftime(
                     "%Y-%m-%d %H:%M:%S"
                 ),
-
                 filename,
-
                 prediction,
-
                 float(confidence),
-
                 float(melanoma_score),
-
                 score_band,
             ),
         )
@@ -418,13 +358,10 @@ init_db()
 
 
 # =========================================================
-# RESULT HELPERS
+# RESULT STYLE
 # =========================================================
 
-def result_style(
-    prediction,
-    confidence,
-):
+def result_style(prediction):
 
     if prediction == "Benign-like":
 
@@ -514,10 +451,9 @@ with st.sidebar:
 # HERO
 # =========================================================
 
-st.markdown(
+hero_html = dedent(
     """
     <div class="hero">
-
         <div class="hero-kicker">
             AI-Powered Skin Image Analysis
         </div>
@@ -533,9 +469,12 @@ st.markdown(
             another skin-lesion type, or an
             unsupported non-skin image.
         </p>
-
     </div>
-    """,
+    """
+)
+
+st.markdown(
+    hero_html,
     unsafe_allow_html=True,
 )
 
@@ -546,19 +485,24 @@ st.markdown(
 
 if page == "Analyze":
 
-    st.markdown(
+    disclaimer_html = dedent(
         """
         <div class="disclaimer">
+            <b>Important:</b><br><br>
 
-        <b>Important:</b>
+            DermaSense AI is an educational
+            machine-learning prototype.
 
-        DermaSense AI is an educational machine-learning
-        prototype. Its output must not be treated as a
-        diagnosis or used instead of evaluation by a
-        qualified healthcare professional.
-
+            Its output must not be treated as a
+            medical diagnosis or used instead of
+            evaluation by a qualified healthcare
+            professional.
         </div>
-        """,
+        """
+    )
+
+    st.markdown(
+        disclaimer_html,
         unsafe_allow_html=True,
     )
 
@@ -594,7 +538,7 @@ if page == "Analyze":
 
 
     # -----------------------------------------------------
-    # IMAGE UPLOAD
+    # UPLOAD
     # -----------------------------------------------------
 
     with left:
@@ -647,13 +591,13 @@ if page == "Analyze":
 
 
     # -----------------------------------------------------
-    # AI ANALYSIS
+    # ANALYSIS
     # -----------------------------------------------------
 
     with right:
 
         st.markdown(
-            "### 2. AI analysis"
+            "### 2. AI Analysis"
         )
 
         if model is None:
@@ -665,10 +609,9 @@ if page == "Analyze":
 
         elif image is None:
 
-            st.markdown(
+            waiting_html = dedent(
                 """
                 <div class="card">
-
                     <div class="card-title">
                         Waiting for an image
                     </div>
@@ -677,9 +620,12 @@ if page == "Analyze":
                         Upload an image on the left.
                         The Analyze button will appear here.
                     </div>
-
                 </div>
-                """,
+                """
+            )
+
+            st.markdown(
+                waiting_html,
                 unsafe_allow_html=True,
             )
 
@@ -706,10 +652,6 @@ if page == "Analyze":
                     "prediction"
                 ]
 
-                class_key = result[
-                    "class_key"
-                ]
-
                 confidence = result[
                     "confidence"
                 ]
@@ -728,8 +670,7 @@ if page == "Analyze":
 
 
                 band, css_class = result_style(
-                    prediction,
-                    confidence,
+                    prediction
                 )
 
 
@@ -750,10 +691,9 @@ if page == "Analyze":
                 # RESULT CARD
                 # -------------------------------------------------
 
-                st.markdown(
+                result_html = dedent(
                     f"""
                     <div class="card">
-
                         <div class="card-title">
                             AI Prediction
                         </div>
@@ -778,18 +718,20 @@ if page == "Analyze":
                         ">
                             {confidence * 100:.1f}%
                         </div>
-
                     </div>
-                    """,
-                    unsafe_allow_html=True,
+                    """
                 )
 
+                st.markdown(
+                    result_html,
+                    unsafe_allow_html=True,
+                )
 
                 st.write("")
 
 
                 # -------------------------------------------------
-                # CLASS-SPECIFIC MESSAGE
+                # CLASS MESSAGE
                 # -------------------------------------------------
 
                 if prediction == "Unsupported image":
@@ -805,38 +747,37 @@ if page == "Analyze":
 
                     st.warning(
                         "The model is not confident enough "
-                        "to provide a lesion classification. "
-                        "Try a clearer and closer image."
+                        "to provide a reliable classification. "
+                        "Please try a clearer image."
                     )
 
 
                 elif prediction == "Other skin lesion":
 
                     st.info(
-                        "The image appears to represent a skin "
-                        "lesion, but its learned pattern is closer "
-                        "to the model's 'other lesion' category "
-                        "than to benign or melanoma."
+                        "The image appears closer to the "
+                        "model's 'other skin lesion' category "
+                        "than to its benign or melanoma classes."
                     )
 
 
                 elif prediction == "Melanoma-suspicious":
 
                     st.warning(
-                        "The model found visual patterns that "
-                        "are more similar to its melanoma "
-                        "training examples. This result does "
-                        "not confirm melanoma."
+                        "The model found visual patterns "
+                        "more similar to its melanoma "
+                        "training examples. "
+                        "This does not confirm melanoma."
                     )
 
 
                 elif prediction == "Benign-like":
 
                     st.info(
-                        "The model found visual patterns that "
-                        "are more similar to its benign "
-                        "training examples. This result does "
-                        "not rule out a medical condition."
+                        "The model found visual patterns "
+                        "more similar to its benign "
+                        "training examples. "
+                        "This does not rule out a medical condition."
                     )
 
 
@@ -845,9 +786,8 @@ if page == "Analyze":
                 # -------------------------------------------------
 
                 st.markdown(
-                    "### Model probability breakdown"
+                    "### Probability Breakdown"
                 )
-
 
                 labels = {
                     "benign":
@@ -919,9 +859,9 @@ elif page == "History":
     )
 
     st.caption(
-        "DermaSense stores the filename and model-result "
-        "information only. The uploaded image itself "
-        "is not stored in the history database."
+        "DermaSense stores only the filename and "
+        "model-result information. "
+        "Uploaded images are not stored in history."
     )
 
 
