@@ -14,17 +14,15 @@ from utils import (
     predict_lesion,
 )
 
+from gradcam import create_gradcam_result
+
 
 # =========================================================
-# APP SETTINGS
+# SETTINGS
 # =========================================================
 
 APP_TITLE = "DermaSense AI"
-
-DB_PATH = (
-    Path("data")
-    / "analysis_history.db"
-)
+DB_PATH = Path("data") / "analysis_history.db"
 
 
 # =========================================================
@@ -40,7 +38,7 @@ st.set_page_config(
 
 
 # =========================================================
-# CUSTOM THEME
+# DESIGN
 # =========================================================
 
 st.markdown(
@@ -51,12 +49,12 @@ st.markdown(
         background:
             radial-gradient(
                 circle at 10% 5%,
-                rgba(56, 214, 210, 0.08),
+                rgba(56,214,210,.08),
                 transparent 28%
             ),
             radial-gradient(
                 circle at 95% 15%,
-                rgba(95, 168, 255, 0.08),
+                rgba(95,168,255,.08),
                 transparent 25%
             ),
             linear-gradient(
@@ -93,12 +91,12 @@ st.markdown(
         padding: 10px;
 
         background:
-            rgba(10, 29, 47, 0.75);
+            rgba(10,29,47,.75);
     }
 
     [data-testid="stMetric"] {
         background:
-            rgba(11, 23, 40, 0.90);
+            rgba(11,23,40,.9);
 
         border:
             1px solid #1d3853;
@@ -152,9 +150,7 @@ def init_db():
         exist_ok=True,
     )
 
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         conn.execute(
             """
@@ -182,9 +178,7 @@ def add_history(
 
     current_time = datetime.now()
 
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         last = conn.execute(
             """
@@ -197,22 +191,19 @@ def add_history(
             FROM history
 
             ORDER BY id DESC
-
             LIMIT 1
             """
         ).fetchone()
 
 
-        # Prevent accidental duplicate history
+        # Prevent duplicate history
         if last:
 
             try:
 
-                previous_time = (
-                    datetime.strptime(
-                        last[0],
-                        "%Y-%m-%d %H:%M:%S",
-                    )
+                previous_time = datetime.strptime(
+                    last[0],
+                    "%Y-%m-%d %H:%M:%S",
                 )
 
                 seconds = (
@@ -226,15 +217,10 @@ def add_history(
 
 
             same_result = (
-
                 last[1] == filename
-
                 and
-
                 last[2] == prediction
-
                 and
-
                 abs(
                     float(last[3])
                     - float(confidence)
@@ -244,8 +230,7 @@ def add_history(
 
             if (
                 same_result
-                and
-                seconds <= 10
+                and seconds <= 10
             ):
 
                 return
@@ -287,31 +272,22 @@ def add_history(
 
 def read_history():
 
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         return pd.read_sql_query(
             """
             SELECT *
-
             FROM history
-
             ORDER BY id DESC
-
             LIMIT 100
             """,
             conn,
         )
 
 
-def delete_history(
-    history_id
-):
+def delete_history(history_id):
 
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         conn.execute(
             """
@@ -328,14 +304,10 @@ def delete_history(
 
 def clear_history():
 
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         conn.execute(
-            """
-            DELETE FROM history
-            """
+            "DELETE FROM history"
         )
 
         conn.commit()
@@ -345,7 +317,7 @@ init_db()
 
 
 # =========================================================
-# CACHE MODEL
+# LOAD MODEL
 # =========================================================
 
 @st.cache_resource
@@ -371,7 +343,7 @@ with st.sidebar:
     )
 
     st.caption(
-        "Skin Image Classifier"
+        "Smart Skin Image Analysis"
     )
 
 
@@ -388,38 +360,21 @@ with st.sidebar:
     st.divider()
 
 
-    if MODEL_PATH.exists():
-
-        st.success(
-            "✅ Trained model detected"
-        )
-
-    else:
-
-        st.warning(
-            "Model not found"
-        )
-
-
-    st.caption(
-        "MobileNetV2 transfer learning model."
+    st.markdown(
+        "### ✨ Explainable ML"
     )
 
     st.caption(
-        "HAM10000 skin lesion dataset."
+        "⚡ Multi-image analysis"
     )
 
     st.caption(
-        "Educational AI prototype."
-    )
-
-    st.caption(
-        "Not a medical diagnostic device."
+        "🧾 Prediction history"
     )
 
 
 # =========================================================
-# MAIN HEADER
+# HEADER
 # =========================================================
 
 with st.container(
@@ -427,17 +382,21 @@ with st.container(
 ):
 
     st.caption(
-        "AI-POWERED SKIN IMAGE ANALYSIS"
+        "EXPLAINABLE MACHINE LEARNING FOR SKIN IMAGE ANALYSIS"
     )
 
     st.title(
-        "Skin Lesion Classifier"
+        "DermaSense AI"
     )
 
     st.write(
         """
-        Upload an image and DermaSense AI will classify it as
-        **Benign-like**, **Melanoma-suspicious**, or **Other**.
+        Upload one or multiple images and DermaSense AI
+        classifies each image as **Benign-like**,
+        **Melanoma-suspicious**, or **Other**.
+
+        For supported lesion predictions, the system also
+        explains why the model produced that result.
         """
     )
 
@@ -450,19 +409,14 @@ if page == "Analyze":
 
     st.warning(
         """
-        **Important:** DermaSense AI is an educational
-        machine-learning prototype.
+        **Educational use only.**
 
-        It does not provide a medical diagnosis and should
-        not replace examination by a qualified healthcare
-        professional.
+        DermaSense AI does not provide a medical diagnosis
+        and should not replace assessment by a qualified
+        healthcare professional.
         """
     )
 
-
-    # =====================================================
-    # LOAD MODEL
-    # =====================================================
 
     model = None
     metadata = {}
@@ -473,64 +427,65 @@ if page == "Analyze":
         try:
 
             model = get_model()
-
-            metadata = (
-                get_metadata()
-            )
+            metadata = get_metadata()
 
         except Exception as exc:
 
             st.error(
-                f"Model loading error: {exc}"
+                f"Unable to load model: {exc}"
             )
 
 
     # =====================================================
-    # TWO-COLUMN LAYOUT
+    # UPLOAD
     # =====================================================
 
-    left, right = st.columns(
-        [
-            1.05,
-            0.95,
-        ],
-        gap="large",
+    st.header(
+        "1. Upload Images"
     )
 
 
-    # =====================================================
-    # IMAGE UPLOAD
-    # =====================================================
+    st.caption(
+        """
+        Upload one image or select multiple images
+        for batch analysis.
+        """
+    )
 
-    with left:
 
-        st.header(
-            "1. Upload Image"
+    uploaded_files = st.file_uploader(
+        "Choose images",
+        type=[
+            "jpg",
+            "jpeg",
+            "png",
+        ],
+        accept_multiple_files=True,
+        label_visibility="collapsed",
+    )
+
+
+    valid_images = []
+
+
+    if uploaded_files:
+
+        st.success(
+            f"{len(uploaded_files)} image(s) selected"
         )
 
-        st.caption(
-            "Upload a clear JPG, JPEG, or PNG image."
-        )
 
-
-        uploaded = (
-            st.file_uploader(
-                "Choose image",
-                type=[
-                    "jpg",
-                    "jpeg",
-                    "png",
-                ],
-                accept_multiple_files=False,
-                label_visibility="collapsed",
+        preview_columns = st.columns(
+            min(
+                len(uploaded_files),
+                4,
             )
         )
 
 
-        image = None
-
-
-        if uploaded is not None:
+        for index, uploaded in enumerate(
+            uploaded_files
+        ):
 
             try:
 
@@ -543,11 +498,26 @@ if page == "Analyze":
                 )
 
 
-                st.image(
-                    image,
-                    caption=uploaded.name,
-                    use_container_width=True,
+                valid_images.append(
+                    (
+                        uploaded,
+                        image,
+                    )
                 )
+
+
+                with preview_columns[
+                    index
+                    % len(
+                        preview_columns
+                    )
+                ]:
+
+                    st.image(
+                        image,
+                        caption=uploaded.name,
+                        use_container_width=True,
+                    )
 
 
             except (
@@ -556,347 +526,444 @@ if page == "Analyze":
             ):
 
                 st.error(
-                    "The uploaded file is not a valid image."
+                    f"{uploaded.name} is not a valid image."
                 )
 
 
     # =====================================================
-    # AI ANALYSIS
+    # ANALYZE
     # =====================================================
 
-    with right:
+    if (
+        valid_images
+        and model is not None
+    ):
 
-        st.header(
-            "2. AI Analysis"
-        )
+        if st.button(
+            "🔎 Analyze Selected Images",
+            use_container_width=True,
+        ):
 
+            st.divider()
 
-        if model is None:
-
-            st.error(
-                "The trained model is unavailable."
+            st.header(
+                "2. Analysis Results"
             )
 
 
-        elif image is None:
-
-            with st.container(
-                border=True
+            for image_number, (
+                uploaded,
+                image,
+            ) in enumerate(
+                valid_images,
+                start=1,
             ):
 
-                st.subheader(
-                    "Waiting for an image"
-                )
-
-                st.write(
-                    """
-                    Upload an image on the left
-                    to begin analysis.
-                    """
-                )
-
-
-        else:
-
-            analyze_button = (
-                st.button(
-                    "🔎 Analyze Image",
-                    use_container_width=True,
-                )
-            )
-
-
-            if analyze_button:
-
-                with st.spinner(
-                    "DermaSense AI is analyzing..."
+                with st.container(
+                    border=True
                 ):
 
-                    result = (
-                        predict_lesion(
-                            model,
+                    st.subheader(
+                        f"Image {image_number}: "
+                        f"{uploaded.name}"
+                    )
+
+
+                    image_col, result_col = st.columns(
+                        [
+                            0.9,
+                            1.1,
+                        ],
+                        gap="large",
+                    )
+
+
+                    # =====================================
+                    # IMAGE
+                    # =====================================
+
+                    with image_col:
+
+                        st.image(
                             image,
-                            metadata,
-                        )
-                    )
-
-
-                prediction = (
-                    result[
-                        "prediction"
-                    ]
-                )
-
-
-                confidence = float(
-                    result[
-                        "confidence"
-                    ]
-                )
-
-
-                melanoma_score = float(
-                    result[
-                        "melanoma_score"
-                    ]
-                )
-
-
-                probabilities = (
-                    result[
-                        "probabilities"
-                    ]
-                )
-
-
-                # =========================================
-                # SAVE HISTORY
-                # =========================================
-
-                add_history(
-                    uploaded.name,
-                    prediction,
-                    confidence,
-                    melanoma_score,
-                )
-
-
-                # =========================================
-                # OTHER RESULT
-                # =========================================
-
-                if prediction == "Other":
-
-                    with st.container(
-                        border=True
-                    ):
-
-                        st.caption(
-                            "AI PREDICTION"
-                        )
-
-                        st.title(
-                            "Other"
+                            use_container_width=True,
                         )
 
 
-                    st.info(
-                        """
-                        **Other image detected.**
+                    # =====================================
+                    # PREDICTION
+                    # =====================================
 
-                        This image does not match the
-                        model's supported Benign-like
-                        or Melanoma-suspicious categories.
-                        """
-                    )
+                    with result_col:
 
+                        with st.spinner(
+                            "Analyzing..."
+                        ):
 
-                    # No confidence shown.
-                    # No percentage breakdown shown.
-
-
-                    st.caption(
-                        f"Processed at "
-                        f"{result['image_size']} × "
-                        f"{result['image_size']} pixels"
-                    )
+                            result = predict_lesion(
+                                model,
+                                image,
+                                metadata,
+                            )
 
 
-                # =========================================
-                # BENIGN RESULT
-                # =========================================
-
-                elif prediction == "Benign-like":
-
-                    with st.container(
-                        border=True
-                    ):
-
-                        st.caption(
-                            "AI PREDICTION"
-                        )
-
-                        st.title(
-                            "Benign-like"
-                        )
-
-                        st.metric(
-                            "Model Confidence",
-                            (
-                                f"{confidence * 100:.1f}%"
-                            ),
+                        prediction = (
+                            result["prediction"]
                         )
 
 
-                    st.success(
-                        """
-                        The model found visual patterns
-                        similar to its benign training
-                        examples.
-
-                        **This is not a medical diagnosis.**
-                        """
-                    )
-
-
-                    benign_score = float(
-                        probabilities.get(
-                            "benign",
-                            0.0,
-                        )
-                    )
-
-
-                    melanoma_probability = float(
-                        probabilities.get(
-                            "melanoma",
-                            0.0,
-                        )
-                    )
-
-
-                    st.subheader(
-                        "Probability Breakdown"
-                    )
-
-
-                    st.write(
-                        f"**Benign-like:** "
-                        f"{benign_score * 100:.1f}%"
-                    )
-
-                    st.progress(
-                        max(
-                            0.0,
-                            min(
-                                benign_score,
-                                1.0,
-                            ),
-                        )
-                    )
-
-
-                    st.write(
-                        f"**Melanoma:** "
-                        f"{melanoma_probability * 100:.1f}%"
-                    )
-
-                    st.progress(
-                        max(
-                            0.0,
-                            min(
-                                melanoma_probability,
-                                1.0,
-                            ),
-                        )
-                    )
-
-
-                    st.caption(
-                        f"Processed at "
-                        f"{result['image_size']} × "
-                        f"{result['image_size']} pixels"
-                    )
-
-
-                # =========================================
-                # MELANOMA RESULT
-                # =========================================
-
-                elif (
-                    prediction
-                    == "Melanoma-suspicious"
-                ):
-
-                    with st.container(
-                        border=True
-                    ):
-
-                        st.caption(
-                            "AI PREDICTION"
-                        )
-
-                        st.title(
-                            "Melanoma-suspicious"
-                        )
-
-                        st.metric(
-                            "Model Confidence",
-                            (
-                                f"{confidence * 100:.1f}%"
-                            ),
+                        confidence = float(
+                            result["confidence"]
                         )
 
 
-                    st.warning(
-                        """
-                        The model found visual patterns
-                        similar to its melanoma training
-                        examples.
-
-                        **This does not confirm melanoma.**
-                        """
-                    )
-
-
-                    benign_score = float(
-                        probabilities.get(
-                            "benign",
-                            0.0,
+                        melanoma_score = float(
+                            result["melanoma_score"]
                         )
-                    )
 
 
-                    melanoma_probability = float(
-                        probabilities.get(
-                            "melanoma",
-                            0.0,
+                        probabilities = (
+                            result["probabilities"]
                         )
-                    )
 
 
-                    st.subheader(
-                        "Probability Breakdown"
-                    )
-
-
-                    st.write(
-                        f"**Benign-like:** "
-                        f"{benign_score * 100:.1f}%"
-                    )
-
-                    st.progress(
-                        max(
-                            0.0,
-                            min(
-                                benign_score,
-                                1.0,
-                            ),
+                        add_history(
+                            uploaded.name,
+                            prediction,
+                            confidence,
+                            melanoma_score,
                         )
-                    )
 
 
-                    st.write(
-                        f"**Melanoma:** "
-                        f"{melanoma_probability * 100:.1f}%"
-                    )
+                        # =================================
+                        # OTHER
+                        # =================================
 
-                    st.progress(
-                        max(
-                            0.0,
-                            min(
-                                melanoma_probability,
-                                1.0,
-                            ),
-                        )
-                    )
+                        if prediction == "Other":
+
+                            st.caption(
+                                "ML PREDICTION"
+                            )
 
 
-                    st.caption(
-                        f"Processed at "
-                        f"{result['image_size']} × "
-                        f"{result['image_size']} pixels"
-                    )
+                            st.title(
+                                "Other"
+                            )
+
+
+                            st.info(
+                                """
+                                The uploaded image does not
+                                match the model's supported
+                                Benign-like or
+                                Melanoma-suspicious categories.
+                                """
+                            )
+
+
+                            with st.expander(
+                                "💡 Why this prediction?"
+                            ):
+
+                                st.write(
+                                    """
+                                    DermaSense includes internal
+                                    categories for **other skin
+                                    lesions** and **non-skin
+                                    images**.
+
+                                    The combined response from
+                                    those categories was stronger
+                                    than the Benign and Melanoma
+                                    responses.
+
+                                    Therefore, the final result is
+                                    shown as **Other**.
+                                    """
+                                )
+
+
+                        # =================================
+                        # BENIGN / MELANOMA
+                        # =================================
+
+                        else:
+
+                            st.caption(
+                                "ML PREDICTION"
+                            )
+
+
+                            st.title(
+                                prediction
+                            )
+
+
+                            st.metric(
+                                "Model Confidence",
+                                f"{confidence * 100:.1f}%",
+                            )
+
+
+                            benign_score = float(
+                                probabilities.get(
+                                    "benign",
+                                    0.0,
+                                )
+                            )
+
+
+                            melanoma_probability = float(
+                                probabilities.get(
+                                    "melanoma",
+                                    0.0,
+                                )
+                            )
+
+
+                            # ---------------------------------
+                            # BENIGN MESSAGE
+                            # ---------------------------------
+
+                            if (
+                                prediction
+                                == "Benign-like"
+                            ):
+
+                                st.success(
+                                    """
+                                    The model found visual
+                                    patterns more similar to
+                                    benign examples from its
+                                    training data.
+
+                                    **This is not a medical
+                                    diagnosis.**
+                                    """
+                                )
+
+
+                            # ---------------------------------
+                            # MELANOMA MESSAGE
+                            # ---------------------------------
+
+                            elif (
+                                prediction
+                                ==
+                                "Melanoma-suspicious"
+                            ):
+
+                                st.warning(
+                                    """
+                                    The model found visual
+                                    patterns more similar to
+                                    melanoma examples from its
+                                    training data.
+
+                                    **This does not confirm
+                                    melanoma.**
+                                    """
+                                )
+
+
+                            # =================================
+                            # SCORES
+                            # =================================
+
+                            st.markdown(
+                                "#### Prediction Scores"
+                            )
+
+
+                            score1, score2 = (
+                                st.columns(2)
+                            )
+
+
+                            score1.metric(
+                                "Benign-like",
+                                f"{benign_score * 100:.1f}%",
+                            )
+
+
+                            score2.metric(
+                                "Melanoma",
+                                f"{melanoma_probability * 100:.1f}%",
+                            )
+
+
+                            # =================================
+                            # WHY THIS PREDICTION
+                            # =================================
+
+                            with st.expander(
+                                "💡 Why this prediction?",
+                                expanded=True,
+                            ):
+
+                                if (
+                                    prediction
+                                    == "Benign-like"
+                                ):
+
+                                    st.write(
+                                        """
+                                        The model's
+                                        **Benign-like response**
+                                        was stronger than its
+                                        Melanoma response.
+
+                                        The neural network
+                                        recognized visual patterns
+                                        that were more similar to
+                                        benign examples learned
+                                        during training.
+                                        """
+                                    )
+
+
+                                else:
+
+                                    st.write(
+                                        """
+                                        The model's
+                                        **Melanoma-suspicious
+                                        response** was stronger
+                                        than its Benign-like
+                                        response.
+
+                                        The neural network
+                                        recognized visual patterns
+                                        that were more similar to
+                                        melanoma examples learned
+                                        during training.
+                                        """
+                                    )
+
+
+                                # =============================
+                                # GRAD-CAM
+                                # =============================
+
+                                class_names = metadata.get(
+                                    "class_names",
+                                    [
+                                        "benign",
+                                        "melanoma",
+                                        "non_skin",
+                                        "other_skin",
+                                    ],
+                                )
+
+
+                                if (
+                                    prediction
+                                    == "Benign-like"
+                                ):
+
+                                    target_class = "benign"
+
+                                else:
+
+                                    target_class = "melanoma"
+
+
+                                try:
+
+                                    class_index = (
+                                        class_names.index(
+                                            target_class
+                                        )
+                                    )
+
+
+                                    with st.spinner(
+                                        "Generating explanation map..."
+                                    ):
+
+                                        gradcam_result = (
+                                            create_gradcam_result(
+                                                model=model,
+                                                image=image,
+                                                class_index=class_index,
+                                                image_size=int(
+                                                    metadata.get(
+                                                        "image_size",
+                                                        224,
+                                                    )
+                                                ),
+                                            )
+                                        )
+
+
+                                    st.markdown(
+                                        "#### 🔥 AI Attention Map"
+                                    )
+
+
+                                    st.caption(
+                                        """
+                                        The highlighted region
+                                        shows which part of the
+                                        image had more influence
+                                        on this model prediction.
+                                        """
+                                    )
+
+
+                                    grad_original, grad_attention = (
+                                        st.columns(2)
+                                    )
+
+
+                                    with grad_original:
+
+                                        st.markdown(
+                                            "**Original**"
+                                        )
+
+                                        st.image(
+                                            image,
+                                            use_container_width=True,
+                                        )
+
+
+                                    with grad_attention:
+
+                                        st.markdown(
+                                            "**Model Attention**"
+                                        )
+
+                                        st.image(
+                                            gradcam_result[
+                                                "overlay"
+                                            ],
+                                            use_container_width=True,
+                                        )
+
+
+                                    st.caption(
+                                        """
+                                        This Grad-CAM visualization
+                                        explains model attention.
+                                        It does not identify or
+                                        medically localize cancer.
+                                        """
+                                    )
+
+
+                                except Exception:
+
+                                    st.caption(
+                                        """
+                                        Prediction completed.
+                                        Attention visualization
+                                        unavailable for this image.
+                                        """
+                                    )
+
+
+                st.write("")
 
 
 # =========================================================
@@ -912,9 +979,9 @@ elif page == "History":
 
     st.caption(
         """
-        View previous DermaSense AI predictions.
+        Review previous DermaSense predictions.
         Uploaded image files themselves are not
-        stored in this history database.
+        stored in the history database.
         """
     )
 
@@ -925,18 +992,14 @@ elif page == "History":
     if history.empty:
 
         st.info(
-            "No saved history."
+            "No saved analysis history."
         )
 
 
     else:
 
-        # =================================================
-        # HISTORY SUMMARY
-        # =================================================
-
-        c1, c2, c3, c4 = (
-            st.columns(4)
+        c1, c2, c3, c4 = st.columns(
+            4
         )
 
 
@@ -950,9 +1013,7 @@ elif page == "History":
             "Benign-like",
             int(
                 (
-                    history[
-                        "prediction"
-                    ]
+                    history["prediction"]
                     == "Benign-like"
                 ).sum()
             ),
@@ -963,9 +1024,7 @@ elif page == "History":
             "Melanoma",
             int(
                 (
-                    history[
-                        "prediction"
-                    ]
+                    history["prediction"]
                     == "Melanoma-suspicious"
                 ).sum()
             ),
@@ -976,9 +1035,7 @@ elif page == "History":
             "Other",
             int(
                 (
-                    history[
-                        "prediction"
-                    ]
+                    history["prediction"]
                     == "Other"
                 ).sum()
             ),
@@ -993,38 +1050,34 @@ elif page == "History":
         )
 
 
-        # =================================================
-        # HEADINGS
-        # =================================================
-
-        header = st.columns(
+        heading = st.columns(
             [
-                1.8,
-                2.5,
+                1.7,
+                2.3,
                 2,
-                1.3,
-                0.7,
+                1.2,
+                0.6,
             ]
         )
 
 
-        header[0].markdown(
+        heading[0].markdown(
             "**Time**"
         )
 
-        header[1].markdown(
+        heading[1].markdown(
             "**Image**"
         )
 
-        header[2].markdown(
+        heading[2].markdown(
             "**Prediction**"
         )
 
-        header[3].markdown(
+        heading[3].markdown(
             "**Confidence**"
         )
 
-        header[4].markdown(
+        heading[4].markdown(
             "**Delete**"
         )
 
@@ -1032,54 +1085,37 @@ elif page == "History":
         st.divider()
 
 
-        # =================================================
-        # HISTORY RECORDS
-        # =================================================
-
-        for _, row in (
-            history.iterrows()
-        ):
+        for _, row in history.iterrows():
 
             cols = st.columns(
                 [
-                    1.8,
-                    2.5,
+                    1.7,
+                    2.3,
                     2,
-                    1.3,
-                    0.7,
+                    1.2,
+                    0.6,
                 ]
             )
 
 
             cols[0].write(
-                row[
-                    "timestamp"
-                ]
+                row["timestamp"]
             )
 
 
             cols[1].write(
-                row[
-                    "filename"
-                ]
+                row["filename"]
             )
 
 
             cols[2].write(
-                row[
-                    "prediction"
-                ]
+                row["prediction"]
             )
 
 
-            # ---------------------------------------------
-            # DO NOT SHOW PERCENTAGE FOR OTHER
-            # ---------------------------------------------
-
+            # Other -> no confidence shown
             if (
-                row[
-                    "prediction"
-                ]
+                row["prediction"]
                 == "Other"
             ):
 
@@ -1087,12 +1123,11 @@ elif page == "History":
                     "—"
                 )
 
+
             else:
 
                 cols[3].write(
-                    (
-                        f"{float(row['confidence']) * 100:.1f}%"
-                    )
+                    f"{float(row['confidence']) * 100:.1f}%"
                 )
 
 
@@ -1102,13 +1137,11 @@ elif page == "History":
                     f"delete_"
                     f"{int(row['id'])}"
                 ),
-                help="Delete this history",
+                help="Delete this result",
             ):
 
                 delete_history(
-                    row[
-                        "id"
-                    ]
+                    row["id"]
                 )
 
                 st.rerun()
@@ -1116,10 +1149,6 @@ elif page == "History":
 
             st.divider()
 
-
-        # =================================================
-        # CLEAR HISTORY
-        # =================================================
 
         if st.button(
             "🗑️ Clear All History",
@@ -1139,6 +1168,7 @@ st.divider()
 
 
 st.caption(
-    "DermaSense AI • MobileNetV2 • "
-    "Transfer Learning • Educational use only"
+    "DermaSense AI • "
+    "Machine Learning • "
+    "Explainable Image Analysis"
 )
