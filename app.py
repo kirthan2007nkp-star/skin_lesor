@@ -66,8 +66,7 @@ st.markdown(
                 #091a2b
             );
 
-        border-right:
-            1px solid #1d3853;
+        border-right: 1px solid #1d3853;
     }
 
     .block-container {
@@ -77,37 +76,22 @@ st.markdown(
     }
 
     [data-testid="stFileUploader"] {
-        border:
-            1px dashed #2c607a;
-
+        border: 1px dashed #2c607a;
         border-radius: 18px;
-
         padding: 10px;
-
-        background:
-            rgba(10,29,47,.75);
+        background: rgba(10,29,47,.75);
     }
 
     [data-testid="stMetric"] {
-        background:
-            rgba(11,23,40,.9);
-
-        border:
-            1px solid #1d3853;
-
-        padding:
-            13px 15px;
-
-        border-radius:
-            16px;
+        background: rgba(11,23,40,.9);
+        border: 1px solid #1d3853;
+        padding: 13px 15px;
+        border-radius: 16px;
     }
 
     div.stButton > button {
-
         border-radius: 14px;
-
-        border:
-            1px solid #286c7b;
+        border: 1px solid #286c7b;
 
         background:
             linear-gradient(
@@ -117,10 +101,13 @@ st.markdown(
             );
 
         color: white;
-
         font-weight: 800;
-
         min-height: 42px;
+    }
+
+    div.stButton > button:hover {
+        border-color: #48e4dd;
+        color: white;
     }
 
     </style>
@@ -140,9 +127,7 @@ def init_db():
         exist_ok=True,
     )
 
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         conn.execute(
             """
@@ -170,10 +155,7 @@ def add_history(
 
     current_time = datetime.now()
 
-
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         last = conn.execute(
             """
@@ -188,47 +170,37 @@ def add_history(
             """
         ).fetchone()
 
-
         if last:
 
             try:
 
-                previous_time = (
-                    datetime.strptime(
-                        last[0],
-                        "%Y-%m-%d %H:%M:%S",
-                    )
+                previous_time = datetime.strptime(
+                    last[0],
+                    "%Y-%m-%d %H:%M:%S",
                 )
 
                 seconds = (
-                    current_time
-                    - previous_time
+                    current_time - previous_time
                 ).total_seconds()
 
             except ValueError:
 
                 seconds = 999
 
-
             same_result = (
                 last[1] == filename
-                and
-                last[2] == prediction
-                and
-                abs(
+                and last[2] == prediction
+                and abs(
                     float(last[3])
-                    - confidence
+                    - float(confidence)
                 ) < 0.0001
             )
-
 
             if (
                 same_result
                 and seconds <= 10
             ):
-
-                return
-
+                return False
 
         conn.execute(
             """
@@ -241,34 +213,28 @@ def add_history(
                 melanoma_score,
                 score_band
             )
-
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 current_time.strftime(
                     "%Y-%m-%d %H:%M:%S"
                 ),
-
                 filename,
-
                 prediction,
-
                 float(confidence),
-
                 float(melanoma_score),
-
                 prediction,
             ),
         )
 
         conn.commit()
 
+    return True
+
 
 def read_history():
 
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         return pd.read_sql_query(
             """
@@ -281,13 +247,9 @@ def read_history():
         )
 
 
-def delete_history(
-    history_id
-):
+def delete_history(history_id):
 
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         conn.execute(
             """
@@ -304,9 +266,7 @@ def delete_history(
 
 def clear_history():
 
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
 
         conn.execute(
             "DELETE FROM history"
@@ -332,7 +292,6 @@ with st.sidebar:
         "Skin Image Classifier"
     )
 
-
     page = st.radio(
         "Navigation",
         [
@@ -342,9 +301,7 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-
     st.divider()
-
 
     if MODEL_PATH.exists():
 
@@ -357,7 +314,6 @@ with st.sidebar:
         st.warning(
             "Model not trained yet"
         )
-
 
     st.caption(
         "Custom CNN trained from scratch."
@@ -390,15 +346,14 @@ with st.container(
 
     st.write(
         """
-        Upload an image and let the custom CNN
-        classify it as **Benign-like**,
-        **Melanoma-suspicious**, or **Other**.
+        Upload an image and let the custom CNN classify it as
+        **Benign-like**, **Melanoma-suspicious**, or **Other**.
         """
     )
 
 
 # =========================================================
-# ANALYZE
+# ANALYZE PAGE
 # =========================================================
 
 if page == "Analyze":
@@ -408,33 +363,33 @@ if page == "Analyze":
         **Important:** DermaSense AI is an educational
         machine-learning prototype.
 
-        It does not provide a medical diagnosis.
+        It does not provide a medical diagnosis and should
+        not replace examination by a qualified healthcare
+        professional.
         """
     )
 
+    st.write("")
+
+    # -----------------------------------------------------
+    # LOAD MODEL
+    # -----------------------------------------------------
 
     model = None
     metadata = {}
-
 
     if MODEL_PATH.exists():
 
         try:
 
-            model = (
-                load_trained_model()
-            )
-
-            metadata = (
-                load_metadata()
-            )
+            model = load_trained_model()
+            metadata = load_metadata()
 
         except Exception as exc:
 
             st.error(
                 f"Model loading error: {exc}"
             )
-
 
     left, right = st.columns(
         [
@@ -446,7 +401,7 @@ if page == "Analyze":
 
 
     # =====================================================
-    # UPLOAD
+    # UPLOAD IMAGE
     # =====================================================
 
     with left:
@@ -456,9 +411,8 @@ if page == "Analyze":
         )
 
         st.caption(
-            "Upload a JPG, JPEG, or PNG image."
+            "Upload a clear JPG, JPEG, or PNG image."
         )
-
 
         uploaded = st.file_uploader(
             "Choose image",
@@ -467,14 +421,13 @@ if page == "Analyze":
                 "jpeg",
                 "png",
             ],
+            accept_multiple_files=False,
             label_visibility="collapsed",
         )
 
-
         image = None
 
-
-        if uploaded:
+        if uploaded is not None:
 
             try:
 
@@ -482,10 +435,7 @@ if page == "Analyze":
                     io.BytesIO(
                         uploaded.getvalue()
                     )
-                ).convert(
-                    "RGB"
-                )
-
+                ).convert("RGB")
 
                 st.image(
                     image,
@@ -493,19 +443,18 @@ if page == "Analyze":
                     use_container_width=True,
                 )
 
-
             except (
                 UnidentifiedImageError,
                 OSError,
             ):
 
                 st.error(
-                    "Invalid image."
+                    "The uploaded file is not a valid image."
                 )
 
 
     # =====================================================
-    # ANALYSIS
+    # AI ANALYSIS
     # =====================================================
 
     with right:
@@ -514,13 +463,11 @@ if page == "Analyze":
             "2. AI Analysis"
         )
 
-
         if model is None:
 
             st.error(
-                "Model unavailable."
+                "The trained model is unavailable."
             )
-
 
         elif image is None:
 
@@ -533,192 +480,244 @@ if page == "Analyze":
                 )
 
                 st.write(
-                    "Upload an image to begin."
+                    "Upload an image on the left to begin analysis."
                 )
 
+        else:
 
-        elif st.button(
-            "🔎 Analyze Image",
-            use_container_width=True,
-        ):
-
-            with st.spinner(
-                "Analyzing image..."
+            if st.button(
+                "🔎 Analyze Image",
+                use_container_width=True,
             ):
 
-                result = predict_lesion(
-                    model,
-                    image,
-                    metadata,
+                with st.spinner(
+                    "DermaSense AI is analyzing..."
+                ):
+
+                    result = predict_lesion(
+                        model,
+                        image,
+                        metadata,
+                    )
+
+                prediction = result[
+                    "prediction"
+                ]
+
+                confidence = float(
+                    result["confidence"]
                 )
 
-
-            prediction = (
-                result["prediction"]
-            )
-
-            confidence = (
-                result["confidence"]
-            )
-
-            melanoma_score = (
-                result["melanoma_score"]
-            )
-
-            probabilities = (
-                result["probabilities"]
-            )
-
-
-            add_history(
-                uploaded.name,
-                prediction,
-                confidence,
-                melanoma_score,
-            )
-
-
-            # =============================================
-            # RESULT
-            # =============================================
-
-            with st.container(
-                border=True
-            ):
-
-                st.caption(
-                    "AI PREDICTION"
+                melanoma_score = float(
+                    result["melanoma_score"]
                 )
 
-                st.title(
-                    prediction
+                probabilities = result[
+                    "probabilities"
+                ]
+
+                # -----------------------------------------
+                # SAVE HISTORY
+                # -----------------------------------------
+
+                add_history(
+                    uploaded.name,
+                    prediction,
+                    confidence,
+                    melanoma_score,
                 )
 
-                st.metric(
-                    "Model Confidence",
-                    f"{confidence * 100:.1f}%",
-                )
+                # -----------------------------------------
+                # MAIN RESULT
+                # -----------------------------------------
+
+                with st.container(
+                    border=True
+                ):
+
+                    st.caption(
+                        "AI PREDICTION"
+                    )
+
+                    st.title(
+                        prediction
+                    )
+
+                    st.metric(
+                        "Model Confidence",
+                        f"{confidence * 100:.1f}%",
+                    )
 
 
-            # =============================================
-            # MESSAGE
-            # =============================================
+                # =========================================
+                # OTHER
+                # =========================================
 
-            if prediction == (
-                "Benign-like"
-            ):
+                if prediction == "Other":
 
-                st.success(
-                    """
-                    The model found patterns
-                    similar to benign training
-                    examples.
+                    st.info(
+                        """
+                        **Other image detected.**
 
-                    This is not a medical diagnosis.
-                    """
-                )
+                        This image does not match the model's
+                        Benign-like or Melanoma-suspicious
+                        categories.
+                        """
+                    )
 
+                    # IMPORTANT:
+                    # Do NOT show Benign or Melanoma
+                    # percentages for an Other result.
 
-            elif prediction == (
-                "Melanoma-suspicious"
-            ):
-
-                st.warning(
-                    """
-                    The model found patterns
-                    similar to melanoma training
-                    examples.
-
-                    This does not confirm melanoma.
-                    """
-                )
+                    st.caption(
+                        f"Processed at "
+                        f"{result['image_size']} × "
+                        f"{result['image_size']} pixels"
+                    )
 
 
-            else:
+                # =========================================
+                # BENIGN
+                # =========================================
 
-                st.info(
-                    """
-                    **Other image detected.**
+                elif prediction == "Benign-like":
 
-                    This image does not match the
-                    model's Benign-like or
-                    Melanoma-suspicious categories.
-                    """
-                )
+                    st.success(
+                        """
+                        The model found visual patterns similar
+                        to its benign training examples.
 
+                        **This is not a medical diagnosis.**
+                        """
+                    )
 
-            # =============================================
-            # FINAL THREE PROBABILITIES
-            # =============================================
+                    benign = float(
+                        probabilities.get(
+                            "benign",
+                            0.0,
+                        )
+                    )
 
-            st.subheader(
-                "Probability Breakdown"
-            )
+                    melanoma = float(
+                        probabilities.get(
+                            "melanoma",
+                            0.0,
+                        )
+                    )
 
+                    st.subheader(
+                        "Probability Breakdown"
+                    )
 
-            benign = float(
-                probabilities.get(
-                    "benign",
-                    0.0,
-                )
-            )
+                    st.write(
+                        f"**Benign-like:** "
+                        f"{benign * 100:.1f}%"
+                    )
 
+                    st.progress(
+                        max(
+                            0.0,
+                            min(
+                                benign,
+                                1.0,
+                            ),
+                        )
+                    )
 
-            melanoma = float(
-                probabilities.get(
-                    "melanoma",
-                    0.0,
-                )
-            )
+                    st.write(
+                        f"**Melanoma:** "
+                        f"{melanoma * 100:.1f}%"
+                    )
 
+                    st.progress(
+                        max(
+                            0.0,
+                            min(
+                                melanoma,
+                                1.0,
+                            ),
+                        )
+                    )
 
-            other = float(
-                probabilities.get(
-                    "other",
-                    0.0,
-                )
-            )
-
-
-            st.write(
-                f"**Benign-like:** "
-                f"{benign * 100:.1f}%"
-            )
-
-            st.progress(
-                benign
-            )
-
-
-            st.write(
-                f"**Melanoma:** "
-                f"{melanoma * 100:.1f}%"
-            )
-
-            st.progress(
-                melanoma
-            )
-
-
-            st.write(
-                f"**Other:** "
-                f"{other * 100:.1f}%"
-            )
-
-            st.progress(
-                other
-            )
+                    st.caption(
+                        f"Processed at "
+                        f"{result['image_size']} × "
+                        f"{result['image_size']} pixels"
+                    )
 
 
-            st.caption(
-                f"Processed at "
-                f"{result['image_size']} × "
-                f"{result['image_size']} pixels"
-            )
+                # =========================================
+                # MELANOMA
+                # =========================================
+
+                elif prediction == "Melanoma-suspicious":
+
+                    st.warning(
+                        """
+                        The model found visual patterns similar
+                        to its melanoma training examples.
+
+                        **This does not confirm melanoma.**
+                        """
+                    )
+
+                    benign = float(
+                        probabilities.get(
+                            "benign",
+                            0.0,
+                        )
+                    )
+
+                    melanoma = float(
+                        probabilities.get(
+                            "melanoma",
+                            0.0,
+                        )
+                    )
+
+                    st.subheader(
+                        "Probability Breakdown"
+                    )
+
+                    st.write(
+                        f"**Benign-like:** "
+                        f"{benign * 100:.1f}%"
+                    )
+
+                    st.progress(
+                        max(
+                            0.0,
+                            min(
+                                benign,
+                                1.0,
+                            ),
+                        )
+                    )
+
+                    st.write(
+                        f"**Melanoma:** "
+                        f"{melanoma * 100:.1f}%"
+                    )
+
+                    st.progress(
+                        max(
+                            0.0,
+                            min(
+                                melanoma,
+                                1.0,
+                            ),
+                        )
+                    )
+
+                    st.caption(
+                        f"Processed at "
+                        f"{result['image_size']} × "
+                        f"{result['image_size']} pixels"
+                    )
 
 
 # =========================================================
-# HISTORY
+# HISTORY PAGE
 # =========================================================
 
 elif page == "History":
@@ -727,9 +726,15 @@ elif page == "History":
         "Analysis History"
     )
 
+    st.caption(
+        """
+        DermaSense stores the image filename and prediction
+        information only. Uploaded images themselves are not
+        stored in the history database.
+        """
+    )
 
     history = read_history()
-
 
     if history.empty:
 
@@ -737,117 +742,145 @@ elif page == "History":
             "No saved history."
         )
 
-
     else:
 
-        c1, c2, c3, c4 = (
-            st.columns(4)
-        )
+        # -------------------------------------------------
+        # SUMMARY
+        # -------------------------------------------------
 
+        c1, c2, c3, c4 = st.columns(
+            4
+        )
 
         c1.metric(
             "Total",
             len(history),
         )
 
-
         c2.metric(
             "Benign-like",
             int(
                 (
-                    history[
-                        "prediction"
-                    ]
+                    history["prediction"]
                     == "Benign-like"
                 ).sum()
             ),
         )
 
-
         c3.metric(
             "Melanoma",
             int(
                 (
-                    history[
-                        "prediction"
-                    ]
+                    history["prediction"]
                     == "Melanoma-suspicious"
                 ).sum()
             ),
         )
 
-
         c4.metric(
             "Other",
             int(
                 (
-                    history[
-                        "prediction"
-                    ]
+                    history["prediction"]
                     == "Other"
                 ).sum()
             ),
         )
 
+        st.write("")
 
         st.subheader(
             "Saved Analyses"
         )
 
+        # -------------------------------------------------
+        # COLUMN HEADINGS
+        # -------------------------------------------------
 
-        for _, row in (
-            history.iterrows()
-        ):
+        header = st.columns(
+            [
+                1.8,
+                2.5,
+                2,
+                1.3,
+                0.7,
+            ]
+        )
 
-            with st.container(
-                border=True
+        header[0].markdown(
+            "**Time**"
+        )
+
+        header[1].markdown(
+            "**Image**"
+        )
+
+        header[2].markdown(
+            "**Prediction**"
+        )
+
+        header[3].markdown(
+            "**Confidence**"
+        )
+
+        header[4].markdown(
+            "**Delete**"
+        )
+
+        st.divider()
+
+        # -------------------------------------------------
+        # HISTORY ROWS
+        # -------------------------------------------------
+
+        for _, row in history.iterrows():
+
+            cols = st.columns(
+                [
+                    1.8,
+                    2.5,
+                    2,
+                    1.3,
+                    0.7,
+                ]
+            )
+
+            cols[0].write(
+                row["timestamp"]
+            )
+
+            cols[1].write(
+                row["filename"]
+            )
+
+            cols[2].write(
+                row["prediction"]
+            )
+
+            cols[3].write(
+                f"{float(row['confidence']) * 100:.1f}%"
+            )
+
+            if cols[4].button(
+                "🗑️",
+                key=(
+                    f"delete_"
+                    f"{int(row['id'])}"
+                ),
+                help="Delete this history",
             ):
 
-                cols = st.columns(
-                    [
-                        2,
-                        2.5,
-                        2,
-                        1.2,
-                        0.6,
-                    ]
+                delete_history(
+                    row["id"]
                 )
 
+                st.rerun()
 
-                cols[0].write(
-                    row["timestamp"]
-                )
+            st.divider()
 
-
-                cols[1].write(
-                    row["filename"]
-                )
-
-
-                cols[2].write(
-                    row["prediction"]
-                )
-
-
-                cols[3].write(
-                    f"{float(row['confidence']) * 100:.1f}%"
-                )
-
-
-                if cols[4].button(
-                    "🗑️",
-                    key=(
-                        f"delete_"
-                        f"{int(row['id'])}"
-                    ),
-                ):
-
-                    delete_history(
-                        row["id"]
-                    )
-
-                    st.rerun()
-
+        # -------------------------------------------------
+        # CLEAR ALL
+        # -------------------------------------------------
 
         if st.button(
             "🗑️ Clear All History",
