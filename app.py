@@ -8,7 +8,6 @@ from datetime import datetime
 
 import pandas as pd
 from PIL import Image, UnidentifiedImageError
-
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -18,22 +17,19 @@ from utils import (
     load_trained_model,
     predict_lesion,
 )
-
 from gradcam import create_gradcam_result
 from dermaguide import dermaguide_reply
 
 
 # =========================================================
-# APP CONFIG
+# CONFIG
 # =========================================================
-
 APP_TITLE = "DermaSense AI"
 DB_PATH = Path("data") / "analysis_history.db"
-PROCESSING_SECONDS = 5.2
-
+PROCESSING_SECONDS = 9.0
 
 st.set_page_config(
-    page_title=f"{APP_TITLE} | Skin Image Analysis",
+    page_title="DermaSense AI | Skin Image Analysis",
     page_icon="🔬",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -43,2561 +39,621 @@ st.set_page_config(
 # =========================================================
 # SESSION STATE
 # =========================================================
-
-if "latest_prediction" not in st.session_state:
-    st.session_state.latest_prediction = None
-
-if "latest_probabilities" not in st.session_state:
-    st.session_state.latest_probabilities = {}
-
-if "latest_filename" not in st.session_state:
-    st.session_state.latest_filename = None
-
 if "analysis_results" not in st.session_state:
     st.session_state.analysis_results = []
-
 if "result_explanations" not in st.session_state:
     st.session_state.result_explanations = {}
 
-if "inline_dermaguide_messages" not in st.session_state:
-    st.session_state.inline_dermaguide_messages = []
-
 
 # =========================================================
-# TECHNICAL UI THEME
+# GLOBAL STYLE
 # =========================================================
-
-st.markdown(
-    """
+CUSTOM_CSS = """
 <style>
+:root {
+    --bg:#030b15;
+    --panel:#071827;
+    --panel2:#0a2032;
+    --line:rgba(82,174,205,.18);
+    --text:#edf7fb;
+    --muted:#7893a4;
+    --cyan:#47ddf4;
+    --green:#43dfc0;
+    --purple:#a95cff;
+}
 
 .stApp {
     background:
-        linear-gradient(
-            rgba(18, 80, 110, 0.022) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(18, 80, 110, 0.022) 1px,
-            transparent 1px
-        ),
-        radial-gradient(
-            circle at 82% 10%,
-            rgba(0, 196, 235, 0.05),
-            transparent 30%
-        ),
-        linear-gradient(
-            180deg,
-            #020b14 0%,
-            #04111d 48%,
-            #061522 100%
-        );
-
-    background-size:
-        38px 38px,
-        38px 38px,
-        auto,
-        auto;
+        radial-gradient(circle at 85% 4%, rgba(56,160,200,.07), transparent 28%),
+        linear-gradient(180deg, #020a13, #05131f);
+    color:var(--text);
 }
-
 
 .block-container {
-    max-width: 1180px;
-    padding-top: 1.5rem;
-    padding-bottom: 3rem;
+    max-width:1180px;
+    padding-top:1.45rem;
+    padding-bottom:4rem;
 }
 
+h1,h2,h3,h4 { color:var(--text) !important; }
 
-#MainMenu {
-    visibility: hidden;
-}
-
-
-footer {
-    visibility: hidden;
-}
-
-
-[data-testid="stDecoration"] {
-    display: none;
-}
-
-
-[data-testid="stStatusWidget"] {
-    display: none;
-}
-
-
-button[title="View fullscreen"] {
-    display: none !important;
-}
-
-
-.stAppDeployButton {
-    display: none !important;
-}
-
-
-[data-testid="stAppDeployButton"] {
-    display: none !important;
-}
-
-
-/* ======================================================
-   SIDEBAR
-   ====================================================== */
-
-[data-testid="stSidebarCollapsedControl"] {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-
-[data-testid="collapsedControl"] {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
+#MainMenu, footer, [data-testid="stDecoration"], .stAppDeployButton,
+[data-testid="stAppDeployButton"] { display:none !important; }
 
 [data-testid="stSidebar"] {
-    background:
-        linear-gradient(
-            180deg,
-            #020b14,
-            #04121e
-        );
-
-    border-right:
-        1px solid rgba(66, 190, 220, 0.16);
+    background:linear-gradient(180deg,#020b14,#04131f);
+    border-right:1px solid var(--line);
 }
 
-
-.tech-stack-card {
-    background:
-        linear-gradient(
-            145deg,
-            rgba(4, 22, 36, .96),
-            rgba(6, 34, 51, .72)
-        );
-
-    border:
-        1px solid rgba(64, 184, 213, .17);
-
-    border-radius: 12px;
-
-    padding: 9px 11px;
-
-    margin-top: 5px;
-    margin-bottom: 10px;
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
 }
 
-
-.tech-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    gap: 8px;
-
-    padding: 7px 0;
-
-    border-bottom:
-        1px solid rgba(100,160,185,.08);
+.hero {
+    border:1px solid var(--line);
+    border-radius:17px;
+    padding:24px 26px;
+    background:linear-gradient(145deg,rgba(7,24,39,.97),rgba(4,18,31,.96));
+    margin-bottom:16px;
 }
-
-
-.tech-row:last-child {
-    border-bottom: none;
+.hero-kicker {
+    color:var(--cyan);
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:1.2px;
 }
-
-
-.tech-name {
-    color: #66899d;
-    font-size: 10px;
+.hero-title {
+    color:var(--text);
+    font-size:35px;
+    font-weight:850;
+    margin-top:5px;
 }
-
-
-.tech-value {
-    color: #d8edf5;
-    font-size: 10px;
-    font-weight: 700;
-    text-align: right;
+.hero-sub {
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.65;
+    margin-top:7px;
+    max-width:800px;
 }
-
 
 .model-ready {
-    display: flex;
-    align-items: center;
-
-    gap: 8px;
-
-    padding: 10px 11px;
-
-    border-radius: 10px;
-
-    background:
-        rgba(22,135,109,.08);
-
-    border:
-        1px solid rgba(62,214,167,.20);
-
-    color: #58e7bc;
-
-    font-size: 10px;
-    font-weight: 700;
+    margin-top:12px;
+    padding:11px 12px;
+    border-radius:10px;
+    border:1px solid rgba(67,223,192,.20);
+    background:rgba(67,223,192,.055);
+    color:var(--green);
+    font-size:11px;
+    font-weight:750;
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+.model-dot {
+    width:7px;height:7px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 8px var(--green);
 }
 
-
-.ready-dot {
-    width: 7px;
-    height: 7px;
-
-    border-radius: 50%;
-
-    background: #52ebbc;
-
-    box-shadow:
-        0 0 7px #52ebbc;
+[data-testid="stFileUploader"], [data-testid="stCameraInput"] {
+    background:var(--panel);
+    border:1px dashed rgba(71,221,244,.28);
+    border-radius:12px;
+    padding:8px;
 }
-
-
-.output-class-box {
-    padding: 9px 11px;
-
-    border-radius: 10px;
-
-    background:
-        rgba(5,25,40,.72);
-
-    border:
-        1px solid rgba(65,148,178,.13);
-
-    color: #849dac;
-
-    font-size: 9px;
-    line-height: 1.8;
-}
-
-
-/* ======================================================
-   HEADINGS
-   ====================================================== */
-
-h1,
-h2,
-h3 {
-    color: #e8f4fa !important;
-    letter-spacing: -0.02em;
-}
-
-
-/* ======================================================
-   CONTAINERS
-   ====================================================== */
-
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background:
-        rgba(4,20,33,.50);
-
-    border-color:
-        rgba(68,164,196,.16) !important;
-
-    border-radius:
-        15px !important;
-}
-
-
-/* ======================================================
-   UPLOAD / CAMERA
-   ====================================================== */
-
-[data-testid="stFileUploader"] {
-    background:
-        rgba(4,22,36,.76);
-
-    border:
-        1px dashed rgba(62,203,229,.31);
-
-    border-radius: 12px;
-
-    padding: 8px;
-}
-
-
-[data-testid="stCameraInput"] {
-    background:
-        rgba(4,22,36,.76);
-
-    border:
-        1px solid rgba(62,203,229,.25);
-
-    border-radius: 12px;
-
-    padding: 8px;
-}
-
-
-/* ======================================================
-   BUTTONS
-   ====================================================== */
 
 div.stButton > button {
-    background:
-        linear-gradient(
-            135deg,
-            #075f73,
-            #114d7c
-        );
-
-    border:
-        1px solid rgba(56,218,242,.35);
-
-    border-radius: 9px;
-
-    color: #edfaff;
-
-    font-weight: 700;
-
-    min-height: 38px;
-
-    transition:
-        all .2s ease;
+    min-height:39px;
+    border-radius:9px;
+    border:1px solid rgba(71,221,244,.30);
+    background:linear-gradient(135deg,#05647a,#15537d);
+    color:white;
+    font-weight:750;
 }
-
 
 div.stButton > button:hover {
-    border-color: #4be6ff;
-
-    box-shadow:
-        0 0 18px rgba(55,218,244,.12);
-
-    transform:
-        translateY(-1px);
-
-    color: white;
+    color:white;
+    border-color:var(--cyan);
+    box-shadow:0 0 17px rgba(71,221,244,.11);
 }
-
-
-/* ======================================================
-   METRICS
-   ====================================================== */
 
 [data-testid="stMetric"] {
-    background:
-        linear-gradient(
-            145deg,
-            rgba(5,26,42,.92),
-            rgba(5,32,50,.72)
-        );
-
-    border:
-        1px solid rgba(60,169,199,.15);
-
-    border-radius: 12px;
-
-    padding: 12px 14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:13px 15px;
 }
-
-
-/* ======================================================
-   ALERTS
-   ====================================================== */
-
-[data-testid="stAlert"] {
-    border-radius: 10px;
-
-    border:
-        1px solid rgba(80,160,185,.16);
-}
-
-
-/* ======================================================
-   FINAL RESULT
-   ====================================================== */
+[data-testid="stMetricLabel"] { color:var(--muted); }
+[data-testid="stMetricValue"] { color:var(--text); }
 
 .final-card {
-    border:
-        1px solid rgba(63,199,224,.23);
-
-    border-radius: 16px;
-
-    padding: 22px 24px;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(5,24,39,.97),
-            rgba(7,34,52,.84)
-        );
+    border:1px solid var(--line);
+    background:linear-gradient(145deg,#071827,#092033);
+    border-radius:15px;
+    padding:22px 23px;
 }
-
-
 .final-label {
-    color: #658498;
-
-    font-size: 10px;
-
-    letter-spacing: 1.3px;
+    color:var(--muted);
+    font-size:9px;
+    letter-spacing:1.1px;
+    font-weight:800;
 }
-
-
 .final-benign {
-    color: #43dfbf;
-
-    font-size: 32px;
-
-    font-weight: 800;
-
-    margin-top: 6px;
+    color:var(--green);
+    font-size:31px;
+    font-weight:850;
+    margin-top:5px;
 }
-
-
 .final-melanoma {
-    color: #ff719e;
-
-    font-size: 32px;
-
-    font-weight: 800;
-
-    margin-top: 6px;
+    color:var(--purple);
+    font-size:31px;
+    font-weight:850;
+    margin-top:5px;
 }
-
-
 .final-other {
-    color: #58ddff;
-
-    font-size: 32px;
-
-    font-weight: 800;
-
-    margin-top: 6px;
+    color:var(--cyan);
+    font-size:31px;
+    font-weight:850;
+    margin-top:5px;
 }
-
-
-.final-description {
-    color: #8ca7b7;
-
-    font-size: 13px;
-
-    line-height: 1.55;
-
-    margin-top: 8px;
-}
-
-
 .other-clean-card {
-    padding: 30px;
-
-    text-align: center;
-
-    border-radius: 16px;
-
-    background:
-        radial-gradient(
-            circle at center,
-            rgba(47,165,201,.10),
-            transparent 62%
-        ),
-        rgba(5,25,40,.84);
-
-    border:
-        1px solid rgba(71,198,228,.20);
+    border:1px solid var(--line);
+    background:var(--panel);
+    border-radius:15px;
+    text-align:center;
+    padding:30px;
 }
-
-
 .other-circle {
-    width: 58px;
-    height: 58px;
-
-    margin: 0 auto 12px auto;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 50%;
-
-    color: #59e4ff;
-
-    font-size: 24px;
-
-    background:
-        rgba(45,154,188,.13);
-
-    border:
-        1px solid rgba(83,223,248,.26);
+    width:50px;height:50px;border-radius:50%;
+    margin:0 auto 10px auto;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid rgba(71,221,244,.25);
+    background:rgba(71,221,244,.055);
+    color:var(--cyan);
+    font-size:20px;
 }
 
-
-/* ======================================================
-   AI EXPLANATION CARD
-   ====================================================== */
-
-.explanation-header {
-    padding: 14px 16px;
-
-    border-radius: 12px;
-
-    background:
-        linear-gradient(
-            135deg,
-            rgba(7,47,67,.85),
-            rgba(8,31,53,.85)
-        );
-
-    border:
-        1px solid rgba(72,204,230,.20);
-
-    margin-bottom: 14px;
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color:var(--line) !important;
+    background:rgba(7,24,39,.72);
+    border-radius:14px !important;
 }
 
-
-.explanation-title {
-    color: #dff8ff;
-
-    font-size: 15px;
-
-    font-weight: 750;
+@media(max-width:760px) {
+    .hero-title { font-size:28px; }
+    .block-container { padding-left:1rem; padding-right:1rem; }
 }
-
-
-.explanation-subtitle {
-    color: #7293a4;
-
-    font-size: 10px;
-
-    margin-top: 3px;
-}
-
-
-/* ======================================================
-   CHAT
-   ====================================================== */
-
-.chat-info {
-    padding: 13px 15px;
-
-    border-radius: 11px;
-
-    background:
-        rgba(5, 31, 48, .75);
-
-    border:
-        1px solid rgba(65, 194, 219, .16);
-
-    color: #8eafbd;
-
-    font-size: 12px;
-
-    line-height: 1.5;
-
-    margin-bottom: 10px;
-}
-
 </style>
-""",
-    unsafe_allow_html=True,
-)
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
 # =========================================================
-# IMAGE TO BASE64
+# HELPERS
 # =========================================================
-
-def image_to_base64(image):
-
+def image_to_base64(image: Image.Image) -> str:
     preview = image.copy()
-
-    preview.thumbnail(
-        (620, 620)
-    )
-
+    preview.thumbnail((900, 900))
     buffer = io.BytesIO()
-
-    preview.save(
-        buffer,
-        format="JPEG",
-        quality=92,
-    )
-
-    return base64.b64encode(
-        buffer.getvalue()
-    ).decode("utf-8")
+    preview.save(buffer, format="JPEG", quality=90)
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
 
-# =========================================================
-# PROCESSING ANIMATION
-# =========================================================
-
-def render_processing_animation(
-    image,
-    filename,
-):
-
-    image_data = image_to_base64(
-        image
-    )
-
-    safe_filename = html.escape(
-        str(filename)
-    )
+def render_processing_animation(image: Image.Image, filename: str):
+    image_data = image_to_base64(image)
+    safe_name = html.escape(str(filename))
 
     processing_html = """
-<!DOCTYPE html>
-
-<html>
-
-<head>
-
 <style>
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    overflow: hidden;
-    background: transparent;
-    font-family: Arial, sans-serif;
-}
-
-.root {
-    width: 100%;
-    height: 355px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.processor {
-    position: relative;
-
-    width: 790px;
-    max-width: 96%;
-
-    height: 320px;
-
-    overflow: hidden;
-
-    border-radius: 19px;
-
+.ds-process {
+    min-height:390px;
+    border:1px solid rgba(72,223,245,.24);
+    border-radius:18px;
     background:
-        linear-gradient(
-            rgba(31,115,145,.025) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(31,115,145,.025) 1px,
-            transparent 1px
-        ),
-        radial-gradient(
-            circle at 21% 42%,
-            rgba(39,202,224,.11),
-            transparent 40%
-        ),
-        linear-gradient(
-            145deg,
-            #04131f,
-            #072337
-        );
-
-    background-size:
-        25px 25px,
-        25px 25px,
-        auto,
-        auto;
-
-    border:
-        1px solid rgba(58,201,228,.25);
+        radial-gradient(circle at 28% 47%, rgba(55,158,195,.13), transparent 38%),
+        linear-gradient(145deg,#03101a,#072136);
+    padding:22px;
+    position:relative;
+    overflow:hidden;
+    font-family:Arial,sans-serif;
+    color:#e9f5f8;
 }
-
-.header {
-    height: 54px;
-
-    display: flex;
-    align-items: center;
-
-    padding: 0 19px;
-
-    border-bottom:
-        1px solid rgba(87,151,181,.12);
-}
-
-.live-dot {
-    width: 8px;
-    height: 8px;
-
-    margin-right: 9px;
-
-    border-radius: 50%;
-
-    background: #4cf0bb;
-
-    box-shadow:
-        0 0 12px #4cf0bb;
-
-    animation:
-        pulse 1s infinite;
-}
-
-.title {
-    color: #eaf5fa;
-
-    font-size: 14px;
-
-    font-weight: 750;
-}
-
-.status {
-    margin-left: auto;
-
-    color: #65869a;
-
-    font-size: 7px;
-
-    letter-spacing: 1.2px;
-}
-
-.image-zone {
-    position: absolute;
-
-    left: 29px;
-    top: 74px;
-
-    width: 290px;
-    height: 210px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    perspective: 950px;
-}
-
-.stack {
-    position: relative;
-
-    width: 215px;
-    height: 170px;
-
-    transform-style: preserve-3d;
-
-    animation:
-        modelMove
-        5.2s
-        ease-in-out
-        forwards;
-}
-
-.image-face {
-    position: absolute;
-
-    left: 9px;
-    top: 8px;
-
-    width: 198px;
-    height: 145px;
-
-    overflow: hidden;
-
-    border-radius: 14px;
-
-    transform:
-        translateZ(24px);
-
-    border:
-        1px solid rgba(64,226,247,.46);
-}
-
-.image-face img {
-    width: 100%;
-    height: 100%;
-
-    object-fit: cover;
-}
-
-.grid {
-    position: absolute;
-
-    inset: 0;
-
-    opacity: 0;
-
+.ds-process-grid {
+    position:absolute; inset:0; opacity:.10;
     background-image:
-        linear-gradient(
-            rgba(59,222,243,.14) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(59,222,243,.14) 1px,
-            transparent 1px
-        );
-
-    background-size:
-        22px 22px;
-
-    animation:
-        gridShow
-        5.2s
-        linear
-        forwards;
+        linear-gradient(rgba(72,223,245,.13) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(72,223,245,.13) 1px, transparent 1px);
+    background-size:28px 28px;
 }
-
-.scan {
-    position: absolute;
-
-    left: 0;
-    top: 5px;
-
-    width: 100%;
-    height: 4px;
-
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            #44e8ff,
-            white,
-            #5aa6ff,
-            transparent
-        );
-
-    box-shadow:
-        0 0 16px rgba(62,227,255,.82);
-
-    animation:
-        scanMove
-        1.18s
-        ease-in-out
-        infinite
-        alternate;
+.ds-process-head { position:relative; z-index:5; }
+.ds-process-title { font-size:15px; font-weight:750; }
+.ds-process-file { margin-top:4px; color:#718f9e; font-size:9px; letter-spacing:.75px; }
+.ds-process-body {
+    position:relative; z-index:5;
+    display:grid; grid-template-columns:minmax(320px,.98fr) minmax(300px,1.02fr);
+    gap:26px; align-items:center; margin-top:20px;
 }
-
-.filename {
-    position: absolute;
-
-    bottom: -8px;
-
-    width: 100%;
-
-    color: #648195;
-
-    text-align: center;
-
-    font-size: 7px;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-
-    white-space: nowrap;
+.scan-stage { height:275px; display:flex; align-items:center; justify-content:center; perspective:1000px; }
+.scan-object {
+    width:355px; height:220px; position:relative; transform-style:preserve-3d;
+    animation:imageEnter 1s cubic-bezier(.2,.75,.25,1) forwards;
 }
-
-.pipeline {
-    position: absolute;
-
-    left: 347px;
-    right: 22px;
-    top: 74px;
-
-    height: 210px;
-
-    padding: 13px;
-
-    border-radius: 14px;
-
-    background:
-        rgba(4,25,41,.80);
-
-    border:
-        1px solid rgba(76,145,175,.13);
+@keyframes imageEnter {
+    0% { opacity:0; transform:rotateX(72deg) rotateZ(-12deg) translateY(35px) scale(.78); }
+    100% { opacity:1; transform:rotateX(55deg) rotateZ(-7deg) translateY(0) scale(1); }
 }
-
-.pipeline-title {
-    color: #dcebf3;
-
-    font-size: 11px;
-
-    font-weight: 700;
-
-    margin-bottom: 9px;
+.scan-shadow {
+    position:absolute; left:18px; right:18px; top:22px; bottom:-20px;
+    transform:translateZ(-30px); border-radius:17px;
+    background:rgba(23,108,137,.24); border:1px solid rgba(72,223,245,.10);
 }
-
-.step {
-    height: 29px;
-
-    display: flex;
-    align-items: center;
-
-    padding: 0 9px;
-
-    margin-bottom: 5px;
-
-    border-radius: 7px;
-
-    background:
-        rgba(7,35,55,.58);
-
-    border:
-        1px solid rgba(73,136,163,.09);
-
-    color: #668397;
-
-    font-size: 8px;
+.image-plane {
+    position:absolute; inset:0; overflow:hidden; border-radius:16px; transform:translateZ(12px);
+    border:1px solid rgba(72,223,245,.42); background:#071522;
+    box-shadow:0 24px 42px rgba(0,0,0,.34), 0 0 24px rgba(72,223,245,.08);
 }
+.image-plane img { width:100%; height:100%; object-fit:cover; }
+.image-filter {
+    position:absolute; inset:0;
+    background:linear-gradient(90deg,rgba(72,223,245,.035),transparent 50%,rgba(169,92,255,.04));
+}
+.scan-line {
+    position:absolute; left:-3%; top:5%; width:106%; height:4px;
+    background:linear-gradient(90deg,transparent,#48dff5,white,#a95cff,transparent);
+    box-shadow:0 0 10px #48dff5,0 0 22px rgba(72,223,245,.65);
+    animation:scanMove 1.2s ease-in-out infinite alternate;
+}
+@keyframes scanMove { from { top:5%; } to { top:94%; } }
+.scan-radar {
+    position:absolute; width:34px; height:34px; left:54%; top:45%; border-radius:50%;
+    border:1px solid rgba(72,223,245,.82); box-shadow:0 0 15px rgba(72,223,245,.30);
+    animation:radarPulse 1s infinite;
+}
+.scan-radar:before,.scan-radar:after { content:""; position:absolute; background:rgba(72,223,245,.65); }
+.scan-radar:before { left:50%; top:-8px; width:1px; height:50px; }
+.scan-radar:after { left:-8px; top:50%; width:50px; height:1px; }
+@keyframes radarPulse { 0%,100% { transform:scale(.85); opacity:.45; } 50% { transform:scale(1.05); opacity:1; } }
+.corner { position:absolute; width:28px; height:28px; opacity:.9; }
+.c1 { top:10px; left:10px; border-top:2px solid #48dff5; border-left:2px solid #48dff5; }
+.c2 { top:10px; right:10px; border-top:2px solid #48dff5; border-right:2px solid #48dff5; }
+.c3 { bottom:10px; left:10px; border-bottom:2px solid #48dff5; border-left:2px solid #48dff5; }
+.c4 { bottom:10px; right:10px; border-bottom:2px solid #48dff5; border-right:2px solid #48dff5; }
 
+.pipeline-heading { color:#728f9d; font-size:9px; font-weight:700; letter-spacing:1px; margin-bottom:8px; }
+.pipeline-window {
+    height:186px; position:relative; overflow:hidden; border-radius:12px;
+    border:1px solid rgba(72,223,245,.11); background:rgba(3,16,27,.48);
+}
+.pipeline-track { padding:9px; animation:pipelineScroll 8.6s cubic-bezier(.42,0,.22,1) forwards; }
+@keyframes pipelineScroll {
+    0%,14% { transform:translateY(0); }
+    22%,34% { transform:translateY(-50px); }
+    42%,54% { transform:translateY(-100px); }
+    62%,74% { transform:translateY(-150px); }
+    82%,100% { transform:translateY(-200px); }
+}
+.pipeline-step {
+    height:43px; box-sizing:border-box; display:flex; align-items:center; gap:10px;
+    margin-bottom:7px; padding:0 11px; border-radius:9px;
+    border:1px solid rgba(77,174,205,.12); background:rgba(6,31,48,.86);
+}
 .step-number {
-    width: 19px;
-    height: 19px;
-
-    margin-right: 8px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 50%;
-
-    color: #70a8be;
-
-    border:
-        1px solid rgba(68,214,237,.22);
+    width:23px; height:23px; flex:0 0 23px; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; background:#48dff5; color:#05121c; font-size:9px; font-weight:900;
+    box-shadow:0 0 8px rgba(72,223,245,.28);
 }
-
-.check {
-    margin-left: auto;
-
-    color: #4beeb7;
-
-    opacity: 0;
+.step-name { color:#dcebf1; font-size:9px; font-weight:750; }
+.step-desc { margin-top:2px; color:#668391; font-size:7.5px; }
+.live-state {
+    margin-top:11px; display:flex; align-items:center; gap:8px; padding:9px 10px;
+    border-radius:8px; border:1px solid rgba(67,223,192,.13);
+    background:rgba(67,223,192,.045); color:#8cb5c2; font-size:8px;
 }
+.live-dot { width:7px;height:7px;border-radius:50%;background:#43dfc0;box-shadow:0 0 8px #43dfc0;animation:pulse .85s infinite; }
+@keyframes pulse { 0%,100% {opacity:.35;} 50% {opacity:1;} }
 
-.s1 .check {
-    animation: done1 5.2s linear forwards;
+@media(max-width:760px) {
+    .ds-process-body { grid-template-columns:1fr; }
+    .scan-stage { height:220px; }
+    .scan-object { width:290px; height:178px; }
 }
-
-.s2 .check {
-    animation: done2 5.2s linear forwards;
-}
-
-.s3 .check {
-    animation: done3 5.2s linear forwards;
-}
-
-.s4 .check {
-    animation: done4 5.2s linear forwards;
-}
-
-.s5 .check {
-    animation: done5 5.2s linear forwards;
-}
-
-.progress {
-    height: 5px;
-
-    margin-top: 9px;
-
-    overflow: hidden;
-
-    border-radius: 20px;
-
-    background: #0e293c;
-}
-
-.progress-value {
-    width: 0;
-    height: 100%;
-
-    background:
-        linear-gradient(
-            90deg,
-            #41ddef,
-            #397ee5,
-            #765bd7
-        );
-
-    animation:
-        progress
-        5.2s
-        linear
-        forwards;
-}
-
-@keyframes pulse {
-
-    0%,
-    100% {
-        opacity: .4;
-        transform: scale(.8);
-    }
-
-    50% {
-        opacity: 1;
-        transform: scale(1.25);
-    }
-}
-
-@keyframes modelMove {
-
-    0% {
-        transform:
-            rotateY(-11deg)
-            rotateX(3deg);
-    }
-
-    40% {
-        transform:
-            rotateY(11deg)
-            rotateX(-3deg);
-    }
-
-    70% {
-        transform:
-            rotateY(-7deg)
-            rotateX(4deg);
-    }
-
-    100% {
-        transform:
-            rotateY(0deg)
-            rotateX(0deg);
-    }
-}
-
-@keyframes scanMove {
-
-    from {
-        top: 5px;
-    }
-
-    to {
-        top: 138px;
-    }
-}
-
-@keyframes gridShow {
-
-    0%,
-    25% {
-        opacity: 0;
-    }
-
-    40%,
-    80% {
-        opacity: .72;
-    }
-
-    100% {
-        opacity: .08;
-    }
-}
-
-@keyframes progress {
-
-    0% { width: 2%; }
-    20% { width: 20%; }
-    40% { width: 42%; }
-    60% { width: 64%; }
-    80% { width: 84%; }
-    100% { width: 100%; }
-}
-
-@keyframes done1 {
-
-    0%,19% { opacity: 0; }
-
-    20%,100% { opacity: 1; }
-}
-
-@keyframes done2 {
-
-    0%,39% { opacity: 0; }
-
-    40%,100% { opacity: 1; }
-}
-
-@keyframes done3 {
-
-    0%,59% { opacity: 0; }
-
-    60%,100% { opacity: 1; }
-}
-
-@keyframes done4 {
-
-    0%,79% { opacity: 0; }
-
-    80%,100% { opacity: 1; }
-}
-
-@keyframes done5 {
-
-    0%,96% { opacity: 0; }
-
-    97%,100% { opacity: 1; }
-}
-
 </style>
 
-</head>
+<div class="ds-process">
+  <div class="ds-process-grid"></div>
+  <div class="ds-process-head">
+    <div class="ds-process-title">DermaSense Neural Inference</div>
+    <div class="ds-process-file">__FILENAME__</div>
+  </div>
+  <div class="ds-process-body">
+    <div class="scan-stage">
+      <div class="scan-object">
+        <div class="scan-shadow"></div>
+        <div class="image-plane">
+          <img src="data:image/jpeg;base64,__IMAGE__" alt="Uploaded skin image" />
+          <div class="image-filter"></div>
+          <div class="scan-line"></div>
+          <div class="scan-radar"></div>
+          <div class="corner c1"></div><div class="corner c2"></div>
+          <div class="corner c3"></div><div class="corner c4"></div>
+        </div>
+      </div>
+    </div>
 
-<body>
-
-<div class="root">
-
-<div class="processor">
-
-<div class="header">
-
-<div class="live-dot"></div>
-
-<div class="title">
-DermaSense Neural Analysis
+    <div>
+      <div class="pipeline-heading">AI ANALYSIS PIPELINE</div>
+      <div class="pipeline-window">
+        <div class="pipeline-track">
+          <div class="pipeline-step"><div class="step-number">1</div><div><div class="step-name">IMAGE DECODING</div><div class="step-desc">Read uploaded RGB image</div></div></div>
+          <div class="pipeline-step"><div class="step-number">2</div><div><div class="step-name">PREPROCESSING</div><div class="step-desc">Prepare 224 × 224 model input</div></div></div>
+          <div class="pipeline-step"><div class="step-number">3</div><div><div class="step-name">MOBILENETV2</div><div class="step-desc">Extract learned visual features</div></div></div>
+          <div class="pipeline-step"><div class="step-number">4</div><div><div class="step-name">CLASS RESPONSE</div><div class="step-desc">Calculate learned category responses</div></div></div>
+          <div class="pipeline-step"><div class="step-number">5</div><div><div class="step-name">PREDICTION</div><div class="step-desc">Select strongest output category</div></div></div>
+        </div>
+      </div>
+      <div class="live-state"><span class="live-dot"></span>Analyzing image with trained MobileNetV2 model</div>
+    </div>
+  </div>
 </div>
-
-<div class="status">
-INFERENCE ACTIVE
-</div>
-
-</div>
+"""
+    processing_html = processing_html.replace("__IMAGE__", image_data)
+    processing_html = processing_html.replace("__FILENAME__", safe_name)
+    st.html(processing_html)
 
 
-<div class="image-zone">
-
-<div class="stack">
-
-<div class="image-face">
-
-<img src="data:image/jpeg;base64,__IMAGE__"/>
-
-<div class="grid"></div>
-
-<div class="scan"></div>
-
-</div>
-
-<div class="filename">
-__FILENAME__
-</div>
-
-</div>
-
-</div>
-
-
-<div class="pipeline">
-
-<div class="pipeline-title">
-Inference Pipeline
-</div>
-
-
-<div class="step s1">
-
-<div class="step-number">
-1
-</div>
-
-Input image decoding
-
-<div class="check">
-✓
-</div>
-
-</div>
-
-
-<div class="step s2">
-
-<div class="step-number">
-2
-</div>
-
-224 × 224 RGB preprocessing
-
-<div class="check">
-✓
-</div>
-
-</div>
-
-
-<div class="step s3">
-
-<div class="step-number">
-3
-</div>
-
-MobileNetV2 feature encoding
-
-<div class="check">
-✓
-</div>
-
-</div>
-
-
-<div class="step s4">
-
-<div class="step-number">
-4
-</div>
-
-Class-response computation
-
-<div class="check">
-✓
-</div>
-
-</div>
-
-
-<div class="step s5">
-
-<div class="step-number">
-5
-</div>
-
-Classification output generated
-
-<div class="check">
-✓
-</div>
-
-</div>
-
-
-<div class="progress">
-
-<div class="progress-value"></div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</body>
-
-</html>
-    """
-
-    processing_html = processing_html.replace(
-        "__IMAGE__",
-        image_data,
-    )
-
-    processing_html = processing_html.replace(
-        "__FILENAME__",
-        safe_filename,
-    )
-
+def scroll_to_processing():
+    """Smoothly move the browser to the live inference panel after Analyze is clicked."""
     components.html(
-        processing_html,
-        height=365,
-        scrolling=False,
+        """
+        <script>
+        setTimeout(function () {
+            const doc = window.parent.document;
+            const target = doc.getElementById("dermasense-processing-anchor");
+            if (target) {
+                target.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+            }
+        }, 120);
+        </script>
+        """,
+        height=0,
     )
 
 
-# =========================================================
-# CONNECTED 3D SKIN VISUALIZATION
-# =========================================================
-
-def render_connected_3d_skin(
-    image,
-    prediction,
-):
-
-    image_data = image_to_base64(
-        image
-    )
-
-    if prediction == "Benign-like":
-
-        accent = "#43dfc0"
-
-    else:
-
-        accent = "#ff6d99"
+def render_connected_3d_skin(image: Image.Image, prediction: str):
+    image_data = image_to_base64(image)
+    accent = "#43dfc0" if prediction == "Benign-like" else "#a95cff"
+    accent_soft = "rgba(67,223,192,.24)" if prediction == "Benign-like" else "rgba(169,92,255,.24)"
 
     visual_html = """
-<!DOCTYPE html>
-
-<html>
-
-<head>
-
 <style>
-
-* {
-    box-sizing: border-box;
+.ds3d-wrap {
+    width:100%; min-height:500px; padding:24px 20px; box-sizing:border-box;
+    border-radius:18px; border:1px solid rgba(92,187,218,.18);
+    background:radial-gradient(circle at 50% 35%,rgba(50,130,170,.10),transparent 45%),linear-gradient(160deg,#04101c,#071827);
+    overflow:hidden; position:relative; font-family:Arial,sans-serif;
 }
-
-body {
-    margin: 0;
-
-    overflow: hidden;
-
-    background: transparent;
-
-    font-family:
-        Arial,
-        sans-serif;
+.ds3d-grid {
+    position:absolute; inset:0; opacity:.10;
+    background-image:linear-gradient(rgba(74,185,215,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(74,185,215,.12) 1px,transparent 1px);
+    background-size:28px 28px;
 }
-
-.root {
-    width: 100%;
-    height: 500px;
-
-    display: flex;
-
-    justify-content: center;
-    align-items: center;
-}
-
-.card {
-    position: relative;
-
-    width: 960px;
-    max-width: 98%;
-
-    height: 470px;
-
-    overflow: hidden;
-
-    border-radius: 20px;
-
-    background:
-        linear-gradient(
-            rgba(34,110,141,.025) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(34,110,141,.025) 1px,
-            transparent 1px
-        ),
-        radial-gradient(
-            circle at 38% 47%,
-            rgba(35,151,185,.13),
-            transparent 48%
-        ),
-        linear-gradient(
-            145deg,
-            #041420,
-            #071e30
-        );
-
-    background-size:
-        28px 28px,
-        28px 28px,
-        auto,
-        auto;
-
-    border:
-        1px solid rgba(58,199,225,.22);
-}
-
-.header {
-    height: 58px;
-
-    display: flex;
-
-    align-items: center;
-
-    padding: 0 20px;
-
-    border-bottom:
-        1px solid rgba(88,153,181,.11);
-}
-
-.header-icon {
-    width: 30px;
-    height: 30px;
-
-    display: flex;
-
-    justify-content: center;
-    align-items: center;
-
-    margin-right: 9px;
-
-    border-radius: 8px;
-
-    color: #4ce5ff;
-
-    background:
-        rgba(31,112,140,.16);
-
-    border:
-        1px solid rgba(75,219,244,.20);
-}
-
-.header-title {
-    color: #e7f2f8;
-
-    font-size: 13px;
-
-    font-weight: 750;
-}
-
-.header-sub {
-    color: #5e7e91;
-
-    font-size: 6px;
-
-    margin-top: 2px;
-}
-
-.status {
-    margin-left: auto;
-
-    display: flex;
-    align-items: center;
-
-    gap: 6px;
-
-    padding: 5px 9px;
-
-    border-radius: 13px;
-
-    color: #60e8bd;
-
-    font-size: 6px;
-
-    background:
-        rgba(38,157,115,.08);
-
-    border:
-        1px solid rgba(72,223,170,.17);
-}
-
-.status-dot {
-    width: 6px;
-    height: 6px;
-
-    border-radius: 50%;
-
-    background: #4cf0b9;
-}
-
-.scene-panel {
-    position: absolute;
-
-    left: 17px;
-
-    top: 73px;
-    bottom: 17px;
-
-    width: 625px;
-
-    border-radius: 15px;
-
-    background:
-        radial-gradient(
-            circle at 50% 48%,
-            rgba(36,142,178,.14),
-            transparent 55%
-        ),
-        rgba(4,24,39,.70);
-
-    border:
-        1px solid rgba(73,147,177,.11);
-}
-
-.scene-title {
-    position: absolute;
-
-    left: 16px;
-    top: 14px;
-
-    color: #dceaf2;
-
-    font-size: 10px;
-
-    font-weight: 700;
-}
-
-.scene-subtitle {
-    position: absolute;
-
-    left: 16px;
-    top: 30px;
-
-    color: #5d7b8e;
-
-    font-size: 6px;
-}
-
-.scene {
-    position: absolute;
-
-    left: 0;
-    right: 0;
-
-    top: 42px;
-    bottom: 0;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    perspective: 1150px;
-}
-
+.ds3d-title { position:relative;z-index:5;color:#e5f3f8;font-size:14px;font-weight:700; }
+.ds3d-sub { position:relative;z-index:5;color:#718e9e;font-size:9px;letter-spacing:1px;margin-top:4px; }
+.ds3d-stage { position:relative;z-index:3;height:340px;display:flex;align-items:center;justify-content:center;perspective:1100px; }
 .skin-model {
-    position: relative;
-
-    width: 480px;
-    height: 270px;
-
-    transform-style:
-        preserve-3d;
-
-    transform:
-        rotateX(52deg)
-        rotateY(-7deg)
-        rotateZ(-3deg);
-
-    animation:
-        wholeModel
-        5.3s
-        ease-in-out
-        forwards;
+    width:540px;height:290px;position:relative;transform-style:preserve-3d;
+    transform:rotateX(58deg) rotateZ(-12deg) translateY(10px);
+    animation:revealSkin 4.8s cubic-bezier(.2,.75,.25,1) forwards;
 }
-
-.surface {
-    position: absolute;
-
-    left: 44px;
-    top: 19px;
-
-    width: 390px;
-    height: 175px;
-
-    overflow: hidden;
-
-    border-radius:
-        16px 16px 3px 3px;
-
-    transform:
-        translateZ(55px);
-
-    border:
-        1px solid rgba(64,222,244,.40);
-
-    animation:
-        surfaceMotion
-        5.3s
-        ease-in-out
-        forwards;
+@keyframes revealSkin {
+    0% { transform:rotateX(72deg) rotateZ(-20deg) scale(.78) translateY(35px); opacity:0; }
+    20% { opacity:1; }
+    70% { transform:rotateX(54deg) rotateZ(-9deg) scale(1.02) translateY(4px); }
+    100% { transform:rotateX(58deg) rotateZ(-12deg) scale(1) translateY(10px); }
 }
-
-.surface img {
-    width: 100%;
-    height: 100%;
-
-    object-fit: cover;
+.skin-layer { position:absolute;left:20px;width:500px;border-radius:18px;overflow:hidden;box-shadow:0 18px 36px rgba(0,0,0,.26); }
+.surface { top:0;height:165px;z-index:10;border:1px solid __ACCENT_SOFT__;background:#111; }
+.surface img { width:100%;height:100%;object-fit:cover; }
+.scan-glow {
+    position:absolute;left:0;top:0;width:100%;height:4px;
+    background:linear-gradient(90deg,transparent,__ACCENT__,white,__ACCENT__,transparent);
+    box-shadow:0 0 18px __ACCENT__; animation:scanSurface 2.6s ease-in-out 1 .8s forwards;
 }
-
-.analysis-line {
-    position: absolute;
-
-    left: 0;
-    top: 6px;
-
-    width: 100%;
-    height: 4px;
-
-    opacity: 0;
-
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            #40e5ff,
-            white,
-            __ACCENT__,
-            transparent
-        );
-
-    box-shadow:
-        0 0 15px rgba(62,226,255,.76);
-
-    animation:
-        surfaceScan
-        5.3s
-        ease-in-out
-        forwards;
-}
-
-.epidermis {
-    position: absolute;
-
-    left: 48px;
-    top: 188px;
-
-    width: 382px;
-    height: 24px;
-
-    background:
-        linear-gradient(
-            180deg,
-            #df968a,
-            #c47676
-        );
-
-    transform:
-        translateZ(40px);
-
-    animation:
-        epidermisMotion
-        5.3s
-        ease-in-out
-        forwards;
-}
-
-.dermis {
-    position: absolute;
-
-    left: 48px;
-    top: 211px;
-
-    width: 382px;
-    height: 78px;
-
-    overflow: hidden;
-
-    background:
-        linear-gradient(
-            180deg,
-            #a65e6f,
-            #79485d
-        );
-
-    transform:
-        translateZ(28px);
-
-    animation:
-        dermisMotion
-        5.3s
-        ease-in-out
-        forwards;
-}
-
+@keyframes scanSurface { 0%{top:4%;opacity:.3;}15%{opacity:1;}85%{opacity:1;}100%{top:94%;opacity:0;} }
+.epidermis { top:164px;height:26px;z-index:8;background:linear-gradient(90deg,#d89d90,#ba797a,#d89d90); }
+.dermis { top:188px;height:61px;z-index:7;background:linear-gradient(90deg,#a85f70,#78445b,#a85f70); }
 .subcutaneous {
-    position: absolute;
-
-    left: 48px;
-    top: 287px;
-
-    width: 382px;
-    height: 39px;
-
-    border-radius:
-        0 0 12px 12px;
-
-    background:
-        radial-gradient(
-            circle,
-            #d3a24c 0 35%,
-            #b57830 38% 60%,
-            transparent 62%
-        );
-
-    background-size:
-        25px 22px;
-
-    background-color:
-        #b98035;
-
-    transform:
-        translateZ(17px);
-
-    animation:
-        subcutaneousMotion
-        5.3s
-        ease-in-out
-        forwards;
+    top:246px;height:45px;z-index:6;
+    background:radial-gradient(circle at 15px 14px,#dba84b 0 6px,#b97b31 7px 11px,transparent 12px),#9f6930;
+    background-size:32px 28px;
 }
-
-.anatomy {
-    position: absolute;
-
-    left: 0;
-    top: 5px;
-
-    width: 100%;
-    height: 70px;
-}
-
+.vessel { position:absolute;z-index:15;height:4px;border-radius:10px;opacity:0;transform-origin:left center; }
+.vessel-red { width:280px;left:120px;top:215px;background:linear-gradient(90deg,transparent,#ff5878,#ff879b,transparent);animation:redReveal 1.3s ease-out 2.8s forwards; }
+.vessel-blue { width:250px;left:180px;top:228px;background:linear-gradient(90deg,transparent,#4b9eff,#73c1ff,transparent);animation:blueReveal 1.3s ease-out 3s forwards; }
 .nerve {
-    fill: none;
-
-    stroke:
-        #ebbe68;
-
-    stroke-width:
-        2;
-
-    stroke-linecap:
-        round;
-
-    stroke-dasharray:
-        240;
-
-    stroke-dashoffset:
-        240;
-
-    animation:
-        nerveDraw
-        5.3s
-        ease-out
-        forwards;
+    position:absolute;z-index:16;width:190px;height:3px;left:80px;top:237px;border-radius:8px;
+    background:linear-gradient(90deg,transparent,#ffe067,#fff0a0,transparent);opacity:0;transform-origin:left center;
+    animation:nerveReveal 1.2s ease-out 3.2s forwards;
 }
-
-.vessel-red {
-    fill: none;
-
-    stroke:
-        #d45b60;
-
-    stroke-width:
-        2.3;
-
-    stroke-dasharray:
-        400;
-
-    stroke-dashoffset:
-        400;
-
-    animation:
-        vesselDraw
-        5.3s
-        ease-out
-        forwards;
-}
-
-.vessel-blue {
-    fill: none;
-
-    stroke:
-        #4789bc;
-
-    stroke-width:
-        2.3;
-
-    stroke-dasharray:
-        400;
-
-    stroke-dashoffset:
-        400;
-
-    animation:
-        vesselDraw
-        5.3s
-        ease-out
-        forwards;
-}
-
-.info-panel {
-    position: absolute;
-
-    right: 17px;
-
-    top: 73px;
-    bottom: 17px;
-
-    width: 283px;
-
-    padding: 14px;
-
-    border-radius: 15px;
-
-    background:
-        rgba(4,24,39,.76);
-
-    border:
-        1px solid rgba(73,147,177,.11);
-}
-
-.info-title {
-    color:
-        #dceaf2;
-
-    font-size:
-        10px;
-
-    font-weight:
-        700;
-
-    margin-bottom:
-        12px;
-}
-
-.info-row {
-    display: flex;
-
-    align-items: center;
-
-    gap: 8px;
-
-    padding: 8px;
-
-    margin-bottom: 7px;
-
-    border-radius: 8px;
-
-    background:
-        rgba(7,35,54,.55);
-
-    border:
-        1px solid rgba(73,136,163,.09);
-}
-
-.code {
-    width: 29px;
-    height: 29px;
-
-    display: flex;
-
-    justify-content: center;
-    align-items: center;
-
-    border-radius: 7px;
-
-    color: #50dcef;
-
-    font-size: 7px;
-
-    background:
-        rgba(30,103,128,.17);
-}
-
-.info-name {
-    color:
-        #cbdde6;
-
-    font-size:
-        7px;
-
-    font-weight:
-        700;
-}
-
-.info-desc {
-    color:
-        #5e7d90;
-
-    font-size:
-        5.5px;
-}
-
-@keyframes wholeModel {
-
-    0% {
-        opacity: 0;
-
-        transform:
-            rotateX(58deg)
-            rotateY(-16deg)
-            rotateZ(-5deg)
-            scale(.92);
-    }
-
-    15% {
-        opacity: 1;
-    }
-
-    100% {
-        opacity: 1;
-
-        transform:
-            rotateX(52deg)
-            rotateY(-7deg)
-            rotateZ(-3deg)
-            scale(1);
-    }
-}
-
-@keyframes surfaceMotion {
-
-    0%,
-    18% {
-        transform:
-            translateZ(55px);
-    }
-
-    36%,
-    58% {
-        transform:
-            translateZ(80px)
-            translateY(-22px);
-    }
-
-    100% {
-        transform:
-            translateZ(55px);
-    }
-}
-
-@keyframes epidermisMotion {
-
-    0%,
-    18% {
-        transform:
-            translateZ(40px);
-    }
-
-    36%,
-    58% {
-        transform:
-            translateZ(40px)
-            translateY(10px);
-    }
-
-    100% {
-        transform:
-            translateZ(40px);
-    }
-}
-
-@keyframes dermisMotion {
-
-    0%,
-    18% {
-        transform:
-            translateZ(28px);
-    }
-
-    36%,
-    58% {
-        transform:
-            translateZ(28px)
-            translateY(23px);
-    }
-
-    100% {
-        transform:
-            translateZ(28px);
-    }
-}
-
-@keyframes subcutaneousMotion {
-
-    0%,
-    18% {
-        transform:
-            translateZ(17px);
-    }
-
-    36%,
-    58% {
-        transform:
-            translateZ(17px)
-            translateY(37px);
-    }
-
-    100% {
-        transform:
-            translateZ(17px);
-    }
-}
-
-@keyframes surfaceScan {
-
-    0%,
-    10% {
-        opacity: 0;
-        top: 5px;
-    }
-
-    15% {
-        opacity: 1;
-    }
-
-    42% {
-        top: 164px;
-        opacity: 1;
-    }
-
-    50%,
-    100% {
-        opacity: 0;
-    }
-}
-
-@keyframes nerveDraw {
-
-    0%,
-    31% {
-        stroke-dashoffset:
-            240;
-    }
-
-    63%,
-    100% {
-        stroke-dashoffset:
-            0;
-    }
-}
-
-@keyframes vesselDraw {
-
-    0%,
-    33% {
-        stroke-dashoffset:
-            400;
-    }
-
-    69%,
-    100% {
-        stroke-dashoffset:
-            0;
-    }
-}
-
+@keyframes redReveal { from{opacity:0;transform:scaleX(.15) rotate(-7deg);} to{opacity:.9;transform:scaleX(1) rotate(-7deg);} }
+@keyframes blueReveal { from{opacity:0;transform:scaleX(.15) rotate(5deg);} to{opacity:.9;transform:scaleX(1) rotate(5deg);} }
+@keyframes nerveReveal { from{opacity:0;transform:scaleX(.15) rotate(10deg);} to{opacity:.9;transform:scaleX(1) rotate(10deg);} }
+.corner3d { position:absolute;width:34px;height:34px;opacity:.78; }
+.k1{top:9px;left:9px;border-top:2px solid __ACCENT__;border-left:2px solid __ACCENT__;}
+.k2{top:9px;right:9px;border-top:2px solid __ACCENT__;border-right:2px solid __ACCENT__;}
+.k3{bottom:9px;left:9px;border-bottom:2px solid __ACCENT__;border-left:2px solid __ACCENT__;}
+.k4{bottom:9px;right:9px;border-bottom:2px solid __ACCENT__;border-right:2px solid __ACCENT__;}
+.info-grid { position:relative;z-index:4;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:5px; }
+.info-card { border:1px solid rgba(100,180,205,.14);background:rgba(4,19,30,.78);border-radius:9px;padding:9px 10px; }
+.info-label { color:#607c8b;font-size:8px;text-transform:uppercase;letter-spacing:.7px; }
+.info-value { margin-top:4px;color:#dcebf1;font-size:9px;font-weight:700; }
+.ds3d-note { position:relative;z-index:4;margin-top:10px;color:#607c8b;font-size:8px;line-height:1.5; }
+@media(max-width:700px) { .ds3d-stage{height:290px;} .skin-model{transform:rotateX(57deg) rotateZ(-8deg) scale(.68);} .info-grid{grid-template-columns:repeat(2,1fr);} }
 </style>
 
-</head>
-
-<body>
-
-<div class="root">
-
-<div class="card">
-
-
-<div class="header">
-
-<div class="header-icon">
-⬡
+<div class="ds3d-wrap">
+  <div class="ds3d-grid"></div>
+  <div class="ds3d-title">Technical 3D Skin Visualization</div>
+  <div class="ds3d-sub">UPLOADED IMAGE • ILLUSTRATIVE SKIN-LAYER MODEL</div>
+  <div class="ds3d-stage">
+    <div class="skin-model">
+      <div class="skin-layer surface">
+        <img src="data:image/jpeg;base64,__IMAGE__" alt="Uploaded image" />
+        <div class="scan-glow"></div>
+        <div class="corner3d k1"></div><div class="corner3d k2"></div><div class="corner3d k3"></div><div class="corner3d k4"></div>
+      </div>
+      <div class="skin-layer epidermis"></div>
+      <div class="skin-layer dermis"></div>
+      <div class="skin-layer subcutaneous"></div>
+      <div class="vessel vessel-red"></div>
+      <div class="vessel vessel-blue"></div>
+      <div class="nerve"></div>
+    </div>
+  </div>
+  <div class="info-grid">
+    <div class="info-card"><div class="info-label">Surface Input</div><div class="info-value">Uploaded Image</div></div>
+    <div class="info-card"><div class="info-label">Upper Layer</div><div class="info-value">Epidermis</div></div>
+    <div class="info-card"><div class="info-label">Support Layer</div><div class="info-value">Dermis</div></div>
+    <div class="info-card"><div class="info-label">Illustrative Network</div><div class="info-value">Nerves + Vessels</div></div>
+  </div>
+  <div class="ds3d-note">The uploaded photograph is used as the visible surface. Deeper skin layers, nerves and vessels are illustrative educational graphics and are not reconstructed from the photograph.</div>
 </div>
+"""
+    visual_html = visual_html.replace("__IMAGE__", image_data)
+    visual_html = visual_html.replace("__ACCENT__", accent)
+    visual_html = visual_html.replace("__ACCENT_SOFT__", accent_soft)
+    st.html(visual_html)
 
 
-<div>
-
-<div class="header-title">
-DermaSense Structural Analysis
-</div>
-
-<div class="header-sub">
-POST-INFERENCE TECHNICAL VISUALIZATION
-</div>
-
-</div>
-
-
-<div class="status">
-
-<span class="status-dot"></span>
-
-ANALYSIS COMPLETE
-
-</div>
-
-</div>
-
-
-<div class="scene-panel">
-
-
-<div class="scene-title">
-Connected Skin Structure
-</div>
-
-
-<div class="scene-subtitle">
-Uploaded surface image with illustrative internal layers
-</div>
-
-
-<div class="scene">
-
-
-<div class="skin-model">
-
-
-<div class="surface">
-
-<img src="data:image/jpeg;base64,__IMAGE__"/>
-
-<div class="analysis-line"></div>
-
-</div>
-
-
-<div class="epidermis"></div>
-
-
-<div class="dermis">
-
-
-<svg
-class="anatomy"
-viewBox="0 0 382 70"
-preserveAspectRatio="none"
->
-
-
-<path
-class="nerve"
-d="
-M12 48
-C44 26,
-69 57,
-98 30
-S148 17,
-173 44
-S218 61,
-246 28
-S295 18,
-368 45
-"
-/>
-
-
-<path
-class="nerve"
-d="
-M39 61
-C69 43,
-88 32,
-113 48
-S151 60,
-171 26
-S212 22,
-234 52
-S281 51,
-316 27
-"
-/>
-
-
-<path
-class="vessel-red"
-d="
-M5 57
-C58 49,
-105 64,
-154 53
-S246 46,
-377 58
-"
-/>
-
-
-<path
-class="vessel-blue"
-d="
-M2 65
-C54 57,
-106 70,
-160 60
-S250 54,
-379 66
-"
-/>
-
-
-</svg>
-
-</div>
-
-
-<div class="subcutaneous"></div>
-
-</div>
-
-</div>
-
-</div>
-
-
-<div class="info-panel">
-
-
-<div class="info-title">
-STRUCTURAL COMPONENTS
-</div>
-
-
-<div class="info-row">
-
-<div class="code">
-S
-</div>
-
-<div>
-
-<div class="info-name">
-Surface Input
-</div>
-
-<div class="info-desc">
-Uploaded photograph
-</div>
-
-</div>
-
-</div>
-
-
-<div class="info-row">
-
-<div class="code">
-L1
-</div>
-
-<div>
-
-<div class="info-name">
-Epidermis
-</div>
-
-<div class="info-desc">
-Illustrative outer layer
-</div>
-
-</div>
-
-</div>
-
-
-<div class="info-row">
-
-<div class="code">
-L2
-</div>
-
-<div>
-
-<div class="info-name">
-Dermis
-</div>
-
-<div class="info-desc">
-Illustrative deeper layer
-</div>
-
-</div>
-
-</div>
-
-
-<div class="info-row">
-
-<div class="code">
-N/V
-</div>
-
-<div>
-
-<div class="info-name">
-Nerve + Vessel Network
-</div>
-
-<div class="info-desc">
-Simplified anatomical model
-</div>
-
-</div>
-
-</div>
-
-
-<div class="info-row">
-
-<div class="code">
-L3
-</div>
-
-<div>
-
-<div class="info-name">
-Subcutaneous Layer
-</div>
-
-<div class="info-desc">
-Illustrative lower tissue
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</body>
-
-</html>
-    """
-
-    visual_html = visual_html.replace(
-        "__IMAGE__",
-        image_data,
-    )
-
-    visual_html = visual_html.replace(
-        "__ACCENT__",
-        accent,
-    )
-
-    components.html(
-        visual_html,
-        height=510,
-        scrolling=False,
-    )
-
-
-# =========================================================
-# FINAL PREDICTION
-# =========================================================
-
-def render_final_prediction(
-    prediction,
-    probabilities,
-):
-
-    benign = float(
-        probabilities.get(
-            "benign",
-            0.0,
-        )
-    )
-
-    melanoma = float(
-        probabilities.get(
-            "melanoma",
-            0.0,
-        )
-    )
-
-
-    # =====================================================
-    # OTHER
-    # =====================================================
-
+def render_final_prediction(prediction: str, confidence: float, probabilities=None):
     if prediction == "Other":
-
         st.markdown(
             """<div class="other-clean-card">
-<div class="other-circle">—</div>
+<div class="other-circle">?</div>
 <div class="final-label">CLASSIFICATION OUTPUT</div>
 <div class="final-other">Other</div>
-<div class="final-description">
-The image produced a stronger response for the model's
-Other / rejection category.
-</div>
 </div>""",
             unsafe_allow_html=True,
         )
-
         return
 
+    probabilities = probabilities or {}
 
-    # =====================================================
-    # BENIGN
-    # =====================================================
-
-    if prediction == "Benign-like":
-
-        result_class = (
-            "final-benign"
-        )
-
-        description = (
-            "The Benign-like neural response was stronger "
-            "than the melanoma response."
-        )
-
-    # =====================================================
-    # MELANOMA
-    # =====================================================
-
-    else:
-
-        result_class = (
-            "final-melanoma"
-        )
-
-        description = (
-            "The melanoma neural response was stronger "
-            "than the Benign-like response. "
-            "This ML result does not confirm melanoma."
-        )
-
-
-    safe_prediction = html.escape(
-        prediction
+    css_class = "final-benign" if prediction == "Benign-like" else "final-melanoma"
+    description = (
+        "The strongest supported model response matched patterns learned from the Benign-like category."
+        if prediction == "Benign-like"
+        else "The strongest supported model response matched patterns learned from melanoma examples. This does not confirm melanoma."
     )
-
-    safe_description = html.escape(
-        description
-    )
-
-
-    final_html = (
-        '<div class="final-card">'
-        '<div class="final-label">CLASSIFICATION OUTPUT</div>'
-        f'<div class="{result_class}">{safe_prediction}</div>'
-        f'<div class="final-description">{safe_description}</div>'
-        '</div>'
-    )
-
 
     st.markdown(
-        final_html,
+        f'<div class="final-card"><div class="final-label">CLASSIFICATION OUTPUT</div>'
+        f'<div class="{css_class}">{html.escape(prediction)}</div>'
+        f'<div style="margin-top:7px;color:#7893a4;font-size:12px;line-height:1.55">{html.escape(description)}</div></div>',
         unsafe_allow_html=True,
     )
 
+    # Show the two real supported-class model responses.
+    # These values come directly from predict_lesion(); they are model outputs,
+    # not medical diagnosis probabilities.
+    benign_value = probabilities.get("benign", probabilities.get("Benign-like"))
+    melanoma_value = probabilities.get("melanoma", probabilities.get("Melanoma-suspicious"))
 
-    left_gap, benign_col, melanoma_col, right_gap = st.columns(
-        [
-            .28,
-            1,
-            1,
-            .28,
-        ]
+    st.write("")
+    col_benign, col_melanoma = st.columns(2)
+
+    if benign_value is None:
+        col_benign.metric("Benign-like Response", "Not available")
+    else:
+        col_benign.metric("Benign-like Response", f"{float(benign_value) * 100:.1f}%")
+
+    if melanoma_value is None:
+        col_melanoma.metric("Melanoma Response", "Not available")
+    else:
+        col_melanoma.metric("Melanoma Response", f"{float(melanoma_value) * 100:.1f}%")
+
+
+def render_gradcam(model, metadata, image, prediction):
+    st.markdown("## Model Attention Analysis")
+    st.caption("Grad-CAM shows image regions that had greater influence on the model response.")
+
+    class_names = metadata.get(
+        "class_names",
+        ["benign", "melanoma", "non_skin", "other_skin"],
     )
+    target = "benign" if prediction == "Benign-like" else "melanoma"
 
-
-    with benign_col:
-
-        st.metric(
-            "Benign-like Response",
-            f"{benign * 100:.1f}%",
+    try:
+        class_index = class_names.index(target)
+        image_size = int(metadata.get("image_size", 224))
+        result = create_gradcam_result(
+            model=model,
+            image=image,
+            class_index=class_index,
+            image_size=image_size,
         )
 
+        _, c1, c2, _ = st.columns([0.22, 1, 1, 0.22])
+        with c1:
+            st.caption("ORIGINAL IMAGE")
+            st.image(image, use_container_width=True)
+        with c2:
+            st.caption("AI ATTENTION / GRAD-CAM")
+            st.image(result["overlay"], use_container_width=True)
 
-    with melanoma_col:
-
-        st.metric(
-            "Melanoma Response",
-            f"{melanoma * 100:.1f}%",
+        st.markdown("### Why did the AI make this prediction?")
+        st.markdown(
+            "The highlighted regions indicate areas that influenced the neural-network output more strongly. "
+            "Grad-CAM visualizes **model attention**; it does not identify the exact location of cancer or provide a diagnosis."
         )
+    except Exception:
+        st.info("Grad-CAM visualization is unavailable for this analysis.")
 
 
-# =========================================================
-# AI RESULT EXPLANATION
-# =========================================================
-
-def generate_result_explanation(
-    prediction,
-    probabilities,
-):
-
+def generate_result_explanation(prediction, probabilities):
     prompt = f"""
-The latest DermaSense machine-learning classification is:
+The latest DermaSense machine-learning result is: {prediction}
 
-{prediction}
-
-Create a clear educational explanation of this result.
-
-Use exactly these sections:
+Create a concise educational explanation with exactly these sections:
 
 ### Why this prediction?
-
-Explain why the MobileNetV2 image classifier may have produced
-this classification based on learned image patterns.
-
-Do not claim that the AI directly sees cancer or knows the
-actual medical diagnosis.
-
-If useful, mention that Grad-CAM shows regions that influenced
-the neural-network response.
-
 ### Possible Causes / Risk Factors
-
-If the classification is Melanoma-suspicious, explain general
-known melanoma risk factors.
-
-Do NOT say those factors caused this person's lesion.
-
-If the result is Benign-like, explain that this classification
-does not identify the cause of a lesion and mention that benign
-skin findings can have many different causes.
-
-If the result is Other, clearly explain that no specific disease
-or cause can be identified from the Other classification.
-
 ### Possible Effects / Concerns
-
-Explain the general concerns associated with the relevant
-condition.
-
-If the result is Benign-like or Other, do not invent a disease.
-
 ### General Treatment / Management
-
-Explain general medical approaches that may be considered only
-if an actual condition is professionally diagnosed.
-
-Do not prescribe medication.
-Do not give medication doses.
-Do not promise a cure.
-Do not tell the user to perform procedures themselves.
-
 ### What Should Someone Generally Do Next?
 
-Give safe general next-step information.
-
-For Melanoma-suspicious, explain that professional dermatology
-assessment is appropriate because the ML result does not confirm
-melanoma.
-
-For Benign-like, explain that changing, unusual, persistent,
-or concerning lesions can still be professionally evaluated.
-
-For Other, explain that the classifier cannot determine what
-the image represents.
-
-End with one short sentence saying that DermaSense is an
-educational ML prototype and not a medical diagnosis.
-
-Keep the response concise and easy to understand.
+Explain MobileNetV2 and Grad-CAM simply. Never state that the system diagnoses cancer.
+Do not prescribe medication or doses. End by saying that DermaSense is an educational decision-support prototype, not a medical diagnosis system.
 """
-
-    return dermaguide_reply(
-        prompt,
-        prediction=prediction,
-        probabilities=probabilities,
-        history=[],
-    )
+    try:
+        return dermaguide_reply(
+            prompt,
+            prediction=prediction,
+            probabilities=probabilities,
+            history=[],
+        )
+    except Exception:
+        return (
+            "### Why this prediction?\n\n"
+            "The trained MobileNetV2 model extracted visual features from the image and selected the supported category with the strongest learned response.\n\n"
+            "### What Should Someone Generally Do Next?\n\n"
+            "A concerning or changing skin lesion should be assessed by a qualified healthcare professional.\n\n"
+            "DermaSense is an educational decision-support prototype, not a medical diagnosis system."
+        )
 
 
 # =========================================================
 # DATABASE
 # =========================================================
-
 def init_db():
-
-    DB_PATH.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
-
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS history (
@@ -2611,94 +667,37 @@ def init_db():
             )
             """
         )
-
         conn.commit()
 
 
-def add_history(
-    filename,
-    prediction,
-    confidence,
-    melanoma_score,
-):
-
+def add_history(filename, prediction, confidence, melanoma_score):
     now = datetime.now()
-
-
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
-
-        last = conn.execute(
-            """
-            SELECT
-                timestamp,
-                filename,
-                prediction,
-                confidence
-            FROM history
-            ORDER BY id DESC
-            LIMIT 1
-            """
+    with sqlite3.connect(DB_PATH) as conn:
+        previous = conn.execute(
+            "SELECT timestamp, filename, prediction, confidence FROM history ORDER BY id DESC LIMIT 1"
         ).fetchone()
-
-
-        if last:
-
+        if previous:
             try:
-
-                previous_time = datetime.strptime(
-                    last[0],
-                    "%Y-%m-%d %H:%M:%S",
-                )
-
-                seconds = (
-                    now
-                    -
-                    previous_time
-                ).total_seconds()
-
-            except ValueError:
-
+                previous_time = datetime.strptime(previous[0], "%Y-%m-%d %H:%M:%S")
+                seconds = (now - previous_time).total_seconds()
+            except Exception:
                 seconds = 999
-
-
             duplicate = (
-                last[1] == filename
-                and
-                last[2] == prediction
-                and
-                abs(
-                    float(last[3])
-                    -
-                    float(confidence)
-                )
-                < 0.0001
+                previous[1] == filename
+                and previous[2] == prediction
+                and abs(float(previous[3]) - float(confidence)) < 0.0001
             )
-
-
             if duplicate and seconds <= 10:
-
                 return
-
 
         conn.execute(
             """
             INSERT INTO history
-            (
-                timestamp,
-                filename,
-                prediction,
-                confidence,
-                melanoma_score,
-                score_band
-            )
+            (timestamp, filename, prediction, confidence, melanoma_score, score_band)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
-                now.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
+                now.strftime("%Y-%m-%d %H:%M:%S"),
                 filename,
                 prediction,
                 float(confidence),
@@ -2706,59 +705,23 @@ def add_history(
                 prediction,
             ),
         )
-
-
         conn.commit()
 
 
 def read_history():
-
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
-
-        return pd.read_sql_query(
-            """
-            SELECT *
-            FROM history
-            ORDER BY id DESC
-            LIMIT 100
-            """,
-            conn,
-        )
+    with sqlite3.connect(DB_PATH) as conn:
+        return pd.read_sql_query("SELECT * FROM history ORDER BY id DESC LIMIT 100", conn)
 
 
-def delete_history(
-    history_id,
-):
-
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
-
-        conn.execute(
-            """
-            DELETE FROM history
-            WHERE id = ?
-            """,
-            (
-                int(history_id),
-            ),
-        )
-
+def delete_history(history_id):
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("DELETE FROM history WHERE id = ?", (int(history_id),))
         conn.commit()
 
 
 def clear_history():
-
-    with sqlite3.connect(
-        DB_PATH
-    ) as conn:
-
-        conn.execute(
-            "DELETE FROM history"
-        )
-
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("DELETE FROM history")
         conn.commit()
 
 
@@ -2768,1137 +731,257 @@ init_db()
 # =========================================================
 # MODEL CACHE
 # =========================================================
-
 @st.cache_resource
 def get_model():
-
     return load_trained_model()
 
 
 @st.cache_data
 def get_metadata():
-
     return load_metadata()
 
 
 # =========================================================
 # SIDEBAR
 # =========================================================
-
 with st.sidebar:
-
-    st.title(
-        "🔬 DermaSense AI"
-    )
-
-
-    st.caption(
-        "AI-Powered Skin Image Analysis"
-    )
-
-
-    st.write("")
-
-
-    # =====================================================
-    # DERMAGUIDE REMOVED FROM SIDEBAR
-    # =====================================================
-
-    page = st.radio(
-        "Navigation",
-        [
-            "Analyze",
-            "History",
-        ],
-        label_visibility="collapsed",
-    )
-
-
+    st.title("🔬 DermaSense AI")
+    st.caption("AI-Powered Skin Image Analysis")
+    page = st.radio("Navigation", ["Analyze", "History"], label_visibility="collapsed")
     st.divider()
 
-
-    st.markdown(
-        "### ⚙ Technical Stack"
-    )
-
-
-    tech_html = """<div class="tech-stack-card">
-<div class="tech-row">
-<span class="tech-name">Architecture</span>
-<span class="tech-value">MobileNetV2</span>
-</div>
-<div class="tech-row">
-<span class="tech-name">Learning</span>
-<span class="tech-value">Transfer Learning</span>
-</div>
-<div class="tech-row">
-<span class="tech-name">Input</span>
-<span class="tech-value">224 × 224 RGB</span>
-</div>
-<div class="tech-row">
-<span class="tech-name">Framework</span>
-<span class="tech-value">TensorFlow / Keras</span>
-</div>
-<div class="tech-row">
-<span class="tech-name">Explainability</span>
-<span class="tech-value">Grad-CAM</span>
-</div>
-<div class="tech-row">
-<span class="tech-name">Storage</span>
-<span class="tech-value">SQLite</span>
-</div>
-<div class="tech-row">
-<span class="tech-name">AI Assistant</span>
-<span class="tech-value">Groq LLM</span>
-</div>
-<div class="tech-row">
-<span class="tech-name">Interface</span>
-<span class="tech-value">Streamlit</span>
-</div>
-</div>"""
-
-
-    st.markdown(
-        tech_html,
-        unsafe_allow_html=True,
-    )
-
-
-    st.markdown(
-        "### ◉ System Status"
-    )
-
-
     if MODEL_PATH.exists():
-
         st.markdown(
-            '<div class="model-ready">'
-            '<span class="ready-dot"></span>'
-            'Model Loaded & Ready'
-            '</div>',
+            '<div class="model-ready"><span class="model-dot"></span>Model Loaded & Ready</div>',
             unsafe_allow_html=True,
         )
-
     else:
-
-        st.error(
-            "Model unavailable"
-        )
-
-
-    st.write("")
-
-
-    st.caption(
-        "OUTPUT CATEGORIES"
-    )
-
-
-    st.markdown(
-        '<div class="output-class-box">'
-        '<strong>Benign-like</strong><br>'
-        '<strong>Melanoma-suspicious</strong><br>'
-        '<strong>Other</strong>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
+        st.error("Model unavailable")
 
 
 # =========================================================
-# MAIN HEADER
+# HEADER
 # =========================================================
-
-with st.container(
-    border=True
-):
-
-    st.caption(
-        "EXPLAINABLE MACHINE LEARNING / SKIN IMAGE CLASSIFICATION"
-    )
-
-
-    st.title(
-        "DermaSense AI"
-    )
+st.markdown(
+    """
+<div class="hero">
+  <div class="hero-kicker">EXPLAINABLE MACHINE LEARNING</div>
+  <div class="hero-title">DermaSense AI</div>
+  <div class="hero-sub">Skin-image analysis using MobileNetV2 transfer learning, Grad-CAM explainability, technical 3D visualization, camera/upload input and prediction history.</div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
 
 
-    st.write(
-        """
-        AI-assisted skin-image classification using
-        **MobileNetV2 transfer learning** with
-        **Grad-CAM explainability**.
-
-        Output categories:
-        **Benign-like**, **Melanoma-suspicious**, and **Other**.
-        """
-    )
+# =========================================================
+# LOAD MODEL
+# =========================================================
+model = None
+metadata = {}
+if MODEL_PATH.exists():
+    try:
+        model = get_model()
+        metadata = get_metadata()
+    except Exception as exc:
+        st.error(f"Unable to load trained model: {exc}")
 
 
 # =========================================================
 # ANALYZE PAGE
 # =========================================================
-
 if page == "Analyze":
-
     st.warning(
-        """
-        **Educational machine-learning prototype — not a medical diagnosis.**
-        Concerning or changing skin lesions should be assessed by a
-        qualified healthcare professional.
-        """
+        "**Educational prototype.** DermaSense is not a medical diagnostic system and does not replace professional examination."
     )
 
-
-    model = None
-    metadata = {}
-
-
-    if MODEL_PATH.exists():
-
-        try:
-
-            model = get_model()
-            metadata = get_metadata()
-
-        except Exception as exc:
-
-            st.error(
-                f"Unable to load model: {exc}"
-            )
-
-
-    # =====================================================
-    # IMAGE ACQUISITION
-    # =====================================================
-
-    st.markdown(
-        "## Image Acquisition"
-    )
-
-
-    input_mode = st.radio(
-        "Input source",
-        [
-            "Upload Images",
-            "Use Camera",
-        ],
-        horizontal=True,
-    )
-
-
+    st.markdown("## Image Input")
+    input_mode = st.radio("Input source", ["Upload Image", "Use Camera"], horizontal=True)
     valid_images = []
 
-
-    # =====================================================
-    # UPLOAD MODE
-    # =====================================================
-
-    if input_mode == "Upload Images":
-
+    if input_mode == "Upload Image":
         uploaded_files = st.file_uploader(
-            "Choose skin image(s)",
-            type=[
-                "jpg",
-                "jpeg",
-                "png",
-            ],
+            "Upload skin image(s)",
+            type=["jpg", "jpeg", "png"],
             accept_multiple_files=True,
             label_visibility="collapsed",
         )
-
-
         if uploaded_files:
-
-            st.success(
-                f"{len(uploaded_files)} image(s) selected"
-            )
-
-
-            preview_columns = st.columns(
-                min(
-                    len(uploaded_files),
-                    5,
-                )
-            )
-
-
-            for index, uploaded in enumerate(
-                uploaded_files
-            ):
-
+            cols = st.columns(min(len(uploaded_files), 4))
+            for idx, uploaded in enumerate(uploaded_files):
                 try:
-
-                    image = Image.open(
-                        io.BytesIO(
-                            uploaded.getvalue()
-                        )
-                    ).convert(
-                        "RGB"
-                    )
-
-
-                    valid_images.append(
-                        (
-                            uploaded.name,
-                            image,
-                        )
-                    )
-
-
-                    with preview_columns[
-                        index
-                        %
-                        len(preview_columns)
-                    ]:
-
-                        st.image(
-                            image,
-                            caption=uploaded.name,
-                            width=125,
-                        )
-
-
-                except (
-                    UnidentifiedImageError,
-                    OSError,
-                ):
-
-                    st.error(
-                        f"{uploaded.name} is not a valid image."
-                    )
-
-
-    # =====================================================
-    # CAMERA MODE
-    # =====================================================
-
+                    image = Image.open(io.BytesIO(uploaded.getvalue())).convert("RGB")
+                    valid_images.append((uploaded.name, image))
+                    with cols[idx % len(cols)]:
+                        st.image(image, caption=uploaded.name, width=135)
+                except (UnidentifiedImageError, OSError):
+                    st.error(f"{uploaded.name} is not a valid image.")
     else:
-
-        captured_file = st.camera_input(
-            "Capture image",
-            label_visibility="collapsed",
-        )
-
-
-        if captured_file is not None:
-
+        captured = st.camera_input("Capture skin image", label_visibility="collapsed")
+        if captured:
             try:
+                image = Image.open(io.BytesIO(captured.getvalue())).convert("RGB")
+                filename = "camera_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".jpg"
+                valid_images.append((filename, image))
+                st.image(image, caption="Captured image", width=150)
+            except (UnidentifiedImageError, OSError):
+                st.error("Unable to read camera image.")
 
-                camera_image = Image.open(
-                    io.BytesIO(
-                        captured_file.getvalue()
-                    )
-                ).convert(
-                    "RGB"
-                )
-
-
-                capture_name = (
-                    "camera_"
-                    +
-                    datetime.now().strftime(
-                        "%Y%m%d_%H%M%S"
-                    )
-                    +
-                    ".jpg"
-                )
-
-
-                valid_images.append(
-                    (
-                        capture_name,
-                        camera_image,
-                    )
-                )
-
-
-                st.success(
-                    "Image captured"
-                )
-
-
-                st.image(
-                    camera_image,
-                    caption="Captured image",
-                    width=160,
-                )
-
-
-            except (
-                UnidentifiedImageError,
-                OSError,
-            ):
-
-                st.error(
-                    "Unable to process captured image."
-                )
-
-
-    # =====================================================
-    # ANALYZE BUTTON
-    # =====================================================
-
-    if (
-        valid_images
-        and
-        model is not None
-    ):
-
-        if len(valid_images) == 1:
-
-            button_text = (
-                "Analyze"
-            )
-
-        else:
-
-            button_text = (
-                f"Analyze {len(valid_images)}"
-            )
-
-
-        left_button, center_button, right_button = st.columns(
-            [
-                2.3,
-                .8,
-                2.3,
-            ]
-        )
-
-
-        with center_button:
-
-            analyze_clicked = st.button(
-                button_text,
-                use_container_width=True,
-            )
-
-
-        # =================================================
-        # NEW ANALYSIS
-        # =================================================
+    if valid_images and model is not None:
+        _, center, _ = st.columns([2.4, .8, 2.4])
+        with center:
+            analyze_clicked = st.button("Analyze", use_container_width=True)
 
         if analyze_clicked:
-
+            st.session_state.result_explanations = {}
             new_results = []
 
-
-            # Clear previous chatbot + explanations
-
-            st.session_state.inline_dermaguide_messages = []
-
-            st.session_state.result_explanations = {}
-
-
             for filename, image in valid_images:
+                # Move directly to the live prediction process as soon as Analyze is clicked.
+                st.markdown(
+                    '<div id="dermasense-processing-anchor" style="scroll-margin-top:18px;"></div>',
+                    unsafe_allow_html=True,
+                )
 
                 processing_placeholder = st.empty()
-
-
                 with processing_placeholder.container():
+                    st.markdown("## Neural Inference")
+                    render_processing_animation(image, filename)
 
-                    st.markdown(
-                        "## Neural Inference"
-                    )
+                scroll_to_processing()
 
+                inference_start = time.perf_counter()
+                try:
+                    result = predict_lesion(model, image, metadata)
+                except Exception as exc:
+                    processing_placeholder.empty()
+                    st.error(f"Analysis failed for {filename}: {exc}")
+                    continue
+                inference_time = time.perf_counter() - inference_start
 
-                    render_processing_animation(
-                        image=image,
-                        filename=filename,
-                    )
-
-
-                result = predict_lesion(
-                    model,
-                    image,
-                    metadata,
-                )
-
-
-                time.sleep(
-                    PROCESSING_SECONDS
-                )
-
+                # Keep the original video-like processing experience.
+                if inference_time < PROCESSING_SECONDS:
+                    time.sleep(PROCESSING_SECONDS - inference_time)
 
                 processing_placeholder.empty()
 
-
-                prediction = result[
-                    "prediction"
-                ]
-
-
-                confidence = float(
-                    result[
-                        "confidence"
-                    ]
-                )
-
-
+                prediction = result.get("prediction", "Other")
+                confidence = float(result.get("confidence", 0.0))
+                probabilities = result.get("probabilities", {})
                 melanoma_score = float(
-                    result[
-                        "melanoma_score"
-                    ]
+                    result.get("melanoma_score", probabilities.get("melanoma", 0.0))
                 )
-
-
-                probabilities = result[
-                    "probabilities"
-                ]
-
-
-                result_data = {
-                    "filename": filename,
-                    "image": image,
-                    "prediction": prediction,
-                    "confidence": confidence,
-                    "melanoma_score": melanoma_score,
-                    "probabilities": probabilities,
-                }
-
 
                 new_results.append(
-                    result_data
+                    {
+                        "filename": filename,
+                        "image": image,
+                        "prediction": prediction,
+                        "confidence": confidence,
+                        "probabilities": probabilities,
+                        "melanoma_score": melanoma_score,
+                        "inference_time": inference_time,
+                    }
                 )
+                add_history(filename, prediction, confidence, melanoma_score)
 
-
-                # -----------------------------------------
-                # STORE HISTORY
-                # -----------------------------------------
-
-                add_history(
-                    filename,
-                    prediction,
-                    confidence,
-                    melanoma_score,
-                )
-
-
-            # ---------------------------------------------
-            # SAVE RESULTS SO CHAT RERUN DOES NOT REMOVE THEM
-            # ---------------------------------------------
-
-            st.session_state.analysis_results = (
-                new_results
-            )
-
-
-            # ---------------------------------------------
-            # LATEST RESULT USED BY CHATBOT
-            # ---------------------------------------------
-
-            if new_results:
-
-                latest = new_results[-1]
-
-
-                st.session_state.latest_prediction = (
-                    latest[
-                        "prediction"
-                    ]
-                )
-
-
-                st.session_state.latest_probabilities = (
-                    latest[
-                        "probabilities"
-                    ]
-                )
-
-
-                st.session_state.latest_filename = (
-                    latest[
-                        "filename"
-                    ]
-                )
-
-
-    # =====================================================
-    # DISPLAY SAVED ANALYSIS RESULTS
-    # =====================================================
+            st.session_state.analysis_results = new_results
 
     if st.session_state.analysis_results:
+        for result_index, result in enumerate(st.session_state.analysis_results, start=1):
+            filename = result["filename"]
+            image = result["image"]
+            prediction = result["prediction"]
+            confidence = result["confidence"]
+            probabilities = result["probabilities"]
 
-        for result_number, result_data in enumerate(
-            st.session_state.analysis_results,
-            start=1,
-        ):
+            if len(st.session_state.analysis_results) > 1:
+                st.markdown(f"## Result {result_index}")
 
-            filename = result_data[
-                "filename"
-            ]
-
-
-            image = result_data[
-                "image"
-            ]
-
-
-            prediction = result_data[
-                "prediction"
-            ]
-
-
-            probabilities = result_data[
-                "probabilities"
-            ]
-
-
-            if len(
-                st.session_state.analysis_results
-            ) > 1:
-
-                st.markdown(
-                    f"## Image {result_number}"
-                )
-
-
-            # =================================================
-            # OTHER RESULT
-            # =================================================
-
+            # -------------------------------------------------
+            # OTHER: stop here exactly as before
+            # -------------------------------------------------
             if prediction == "Other":
-
-                # No 3D model
-                # No nerves
-                # No Grad-CAM
-                # No percentages
-
-                st.markdown(
-                    "## Classification Output"
-                )
-
-
-                render_final_prediction(
-                    prediction=prediction,
-                    probabilities=probabilities,
-                )
-
-
-            # =================================================
-            # BENIGN / MELANOMA
-            # =================================================
-
-            else:
-
-                # =============================================
-                # STRUCTURAL VISUALIZATION
-                # =============================================
-
-                st.markdown(
-                    "## Structural Visualization"
-                )
-
-
-                render_connected_3d_skin(
-                    image=image,
-                    prediction=prediction,
-                )
-
-
-                # =============================================
-                # GRAD-CAM
-                # =============================================
-
-                st.markdown(
-                    "## Model Attention Analysis"
-                )
-
-
-                st.caption(
+                st.markdown("## Classification Output")
+                render_final_prediction(prediction, confidence, probabilities)
+                st.markdown("## Why this prediction?")
+                st.info(
                     """
-                    Grad-CAM highlights image regions that influenced
-                    the neural-network response.
-                    """
+The uploaded image produced stronger patterns for the model's **Other / rejection category**.
+
+It did not match the learned **Benign-like** or **Melanoma-suspicious** patterns strongly enough.
+
+DermaSense therefore returns **Other** instead of forcing the image into one of its supported skin-lesion classifications.
+"""
                 )
+                if result_index < len(st.session_state.analysis_results):
+                    st.divider()
+                continue
 
+            # -------------------------------------------------
+            # ORIGINAL VISUAL FLOW
+            # -------------------------------------------------
+            st.markdown("## Structural Visualization")
+            render_connected_3d_skin(image, prediction)
 
-                class_names = metadata.get(
-                    "class_names",
-                    [
-                        "benign",
-                        "melanoma",
-                        "non_skin",
-                        "other_skin",
-                    ],
-                )
+            # Show the prediction immediately after the 3D structural visualization.
+            st.markdown("## Prediction Result")
+            render_final_prediction(prediction, confidence, probabilities)
 
+            # Then explain where the model focused.
+            render_gradcam(model, metadata, image, prediction)
 
-                if prediction == "Benign-like":
-
-                    target_class = (
-                        "benign"
+            st.markdown("## AI Result Explanation")
+            explanation_key = f"{filename}_{prediction}_{result_index}"
+            if explanation_key not in st.session_state.result_explanations:
+                with st.spinner("Generating explanation..."):
+                    st.session_state.result_explanations[explanation_key] = generate_result_explanation(
+                        prediction,
+                        probabilities,
                     )
+            st.markdown(st.session_state.result_explanations[explanation_key])
 
-                else:
-
-                    target_class = (
-                        "melanoma"
-                    )
-
-
-                try:
-
-                    class_index = class_names.index(
-                        target_class
-                    )
-
-
-                    gradcam_result = create_gradcam_result(
-                        model=model,
-                        image=image,
-                        class_index=class_index,
-                        image_size=int(
-                            metadata.get(
-                                "image_size",
-                                224,
-                            )
-                        ),
-                    )
-
-
-                    (
-                        left_gap,
-                        original_col,
-                        attention_col,
-                        right_gap,
-                    ) = st.columns(
-                        [
-                            .42,
-                            1,
-                            1,
-                            .42,
-                        ]
-                    )
-
-
-                    with original_col:
-
-                        st.caption(
-                            "INPUT IMAGE"
-                        )
-
-
-                        st.image(
-                            image,
-                            width=255,
-                        )
-
-
-                    with attention_col:
-
-                        st.caption(
-                            "GRAD-CAM RESPONSE"
-                        )
-
-
-                        st.image(
-                            gradcam_result[
-                                "overlay"
-                            ],
-                            width=255,
-                        )
-
-
-                    st.caption(
-                        """
-                        Model-attention visualization only.
-                        It does not diagnose or medically localize cancer.
-                        """
-                    )
-
-
-                except Exception:
-
-                    st.caption(
-                        """
-                        Classification completed successfully.
-                        Grad-CAM visualization is unavailable.
-                        """
-                    )
-
-
-                # =============================================
-                # FINAL PREDICTION
-                # =============================================
-
-                st.markdown(
-                    "## Classification Output"
-                )
-
-
-                render_final_prediction(
-                    prediction=prediction,
-                    probabilities=probabilities,
-                )
-
-
-                if (
-                    prediction
-                    ==
-                    "Melanoma-suspicious"
-                ):
-
-                    st.warning(
-                        """
-                        **Melanoma-suspicious** is a machine-learning
-                        classification and does not confirm melanoma.
-                        """
-                    )
-
-
-            # =================================================
-            # AI EXPLANATION
-            # =================================================
-
-            st.markdown(
-                "## AI Result Explanation"
+            st.warning(
+                "**Medical Safety Notice:** DermaSense is an educational AI/ML decision-support prototype. Its prediction, confidence score, Grad-CAM visualization and 3D illustration must not be interpreted as a medical diagnosis."
             )
 
-
-            st.markdown(
-                """<div class="explanation-header">
-<div class="explanation-title">
-Prediction Interpretation
-</div>
-<div class="explanation-subtitle">
-Why this result • Causes / Risk Factors • Effects • Treatment / Management • Next Step
-</div>
-</div>""",
-                unsafe_allow_html=True,
-            )
-
-
-            explanation_key = (
-                f"{filename}_{prediction}_{result_number}"
-            )
-
-
-            if (
-                explanation_key
-                not in
-                st.session_state.result_explanations
-            ):
-
-                with st.spinner(
-                    "Generating educational result explanation..."
-                ):
-
-                    explanation = generate_result_explanation(
-                        prediction=prediction,
-                        probabilities=probabilities,
-                    )
-
-
-                    st.session_state.result_explanations[
-                        explanation_key
-                    ] = explanation
-
-
-            st.markdown(
-                st.session_state.result_explanations[
-                    explanation_key
-                ]
-            )
-
-
-            if (
-                result_number
-                <
-                len(
-                    st.session_state.analysis_results
-                )
-            ):
-
+            if result_index < len(st.session_state.analysis_results):
                 st.divider()
-
-
-        # =====================================================
-        # INLINE CHATBOT
-        # =====================================================
-
-        latest_result = (
-            st.session_state.analysis_results[
-                -1
-            ]
-        )
-
-
-        latest_prediction = latest_result[
-            "prediction"
-        ]
-
-
-        latest_probabilities = latest_result[
-            "probabilities"
-        ]
-
-
-        st.divider()
-
-
-        st.markdown(
-            "## Ask DermaGuide"
-        )
-
-
-        st.markdown(
-            """<div class="chat-info">
-Ask for more information about the prediction, diseases,
-symptoms, causes, risk factors, prevention, general treatment
-approaches, Grad-CAM, or another health-related question.
-The chatbot is not limited to fixed questions.
-</div>""",
-            unsafe_allow_html=True,
-        )
-
-
-        # =====================================================
-        # DISPLAY CHAT HISTORY
-        # =====================================================
-
-        for message in (
-            st.session_state.inline_dermaguide_messages
-        ):
-
-            with st.chat_message(
-                message[
-                    "role"
-                ]
-            ):
-
-                st.markdown(
-                    message[
-                        "content"
-                    ]
-                )
-
-
-        # =====================================================
-        # CHAT INPUT
-        # =====================================================
-
-        chat_question = st.chat_input(
-            "Ask anything about this result or a disease..."
-        )
-
-
-        if chat_question:
-
-            # ---------------------------------------------
-            # USER MESSAGE
-            # ---------------------------------------------
-
-            st.session_state.inline_dermaguide_messages.append(
-                {
-                    "role": "user",
-                    "content": chat_question,
-                }
-            )
-
-
-            # ---------------------------------------------
-            # AI ANSWER
-            # ---------------------------------------------
-
-            with st.spinner(
-                "DermaGuide is thinking..."
-            ):
-
-                answer = dermaguide_reply(
-                    chat_question,
-                    prediction=latest_prediction,
-                    probabilities=latest_probabilities,
-                    history=st.session_state.inline_dermaguide_messages,
-                )
-
-
-            st.session_state.inline_dermaguide_messages.append(
-                {
-                    "role": "assistant",
-                    "content": answer,
-                }
-            )
-
-
-            st.rerun()
-
-
-        if (
-            st.session_state.inline_dermaguide_messages
-        ):
-
-            if st.button(
-                "Clear Chat"
-            ):
-
-                st.session_state.inline_dermaguide_messages = []
-
-                st.rerun()
 
 
 # =========================================================
 # HISTORY PAGE
 # =========================================================
-
 elif page == "History":
-
-    st.markdown(
-        "## Analysis History"
-    )
-
-
-    st.caption(
-        """
-        Prediction metadata is stored locally.
-        Uploaded images themselves are not stored.
-        """
-    )
-
+    st.markdown("## Analysis History")
+    st.caption("Prediction metadata is stored locally. Uploaded image files themselves are not stored.")
 
     history = read_history()
-
-
     if history.empty:
-
-        st.info(
-            "No analysis history yet."
-        )
-
-
+        st.info("No analysis history yet.")
     else:
-
-        c1, c2, c3, c4 = st.columns(
-            4
-        )
-
-
-        c1.metric(
-            "Total",
-            len(history),
-        )
-
-
-        c2.metric(
-            "Benign-like",
-            int(
-                (
-                    history[
-                        "prediction"
-                    ]
-                    ==
-                    "Benign-like"
-                ).sum()
-            ),
-        )
-
-
-        c3.metric(
-            "Melanoma",
-            int(
-                (
-                    history[
-                        "prediction"
-                    ]
-                    ==
-                    "Melanoma-suspicious"
-                ).sum()
-            ),
-        )
-
-
-        c4.metric(
-            "Other",
-            int(
-                (
-                    history[
-                        "prediction"
-                    ]
-                    ==
-                    "Other"
-                ).sum()
-            ),
-        )
-
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total", len(history))
+        c2.metric("Benign-like", int((history["prediction"] == "Benign-like").sum()))
+        c3.metric("Melanoma-suspicious", int((history["prediction"] == "Melanoma-suspicious").sum()))
+        c4.metric("Other", int((history["prediction"] == "Other").sum()))
 
         st.write("")
-
-
         for _, row in history.iterrows():
-
-            with st.container(
-                border=True
-            ):
-
-                cols = st.columns(
-                    [
-                        1.5,
-                        2.1,
-                        1.8,
-                        1,
-                        .55,
-                    ]
-                )
-
-
-                cols[0].write(
-                    row[
-                        "timestamp"
-                    ]
-                )
-
-
-                cols[1].write(
-                    row[
-                        "filename"
-                    ]
-                )
-
-
-                cols[2].write(
-                    row[
-                        "prediction"
-                    ]
-                )
-
-
-                if (
-                    row[
-                        "prediction"
-                    ]
-                    ==
-                    "Other"
-                ):
-
-                    cols[3].write(
-                        "—"
-                    )
-
+            with st.container(border=True):
+                cols = st.columns([1.5, 2, 1.8, 1, .65])
+                cols[0].write(row["timestamp"])
+                cols[1].write(row["filename"])
+                cols[2].write(row["prediction"])
+                if row["prediction"] == "Other":
+                    cols[3].write("—")
                 else:
-
-                    cols[3].write(
-                        f"{float(row['confidence']) * 100:.1f}%"
-                    )
-
-
-                if cols[4].button(
-                    "Delete",
-                    key=f"delete_{int(row['id'])}",
-                ):
-
-                    delete_history(
-                        row[
-                            "id"
-                        ]
-                    )
-
+                    cols[3].write(f"{float(row['confidence']) * 100:.1f}%")
+                if cols[4].button("Delete", key=f"delete_{int(row['id'])}"):
+                    delete_history(row["id"])
                     st.rerun()
 
-
-        if st.button(
-            "Clear All History"
-        ):
-
+        st.write("")
+        if st.button("Clear All History"):
             clear_history()
-
             st.rerun()
