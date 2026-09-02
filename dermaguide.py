@@ -1,215 +1,216 @@
 # =========================================================
 # DERMAGUIDE AI
-# Educational skin-image assistant
+# LLM-powered educational assistant
 # =========================================================
 
-import re
+import os
+
+from groq import Groq
 
 
 # =========================================================
-# BASIC NORMALIZATION
+# MODEL
 # =========================================================
 
-def normalize_text(text):
+MODEL_NAME = "llama-3.3-70b-versatile"
 
-    text = str(text).lower().strip()
 
-    text = re.sub(
-        r"\s+",
-        " ",
-        text,
+# =========================================================
+# SYSTEM PROMPT
+# =========================================================
+
+SYSTEM_PROMPT = """
+You are DermaGuide AI, the intelligent educational assistant
+inside the DermaSense AI project.
+
+Your job is to understand the user's question naturally and answer it.
+Do NOT depend on fixed keywords or fixed question templates.
+
+You can answer questions about:
+
+- Skin diseases
+- General diseases and medical conditions
+- Symptoms
+- Causes
+- Risk factors
+- Prevention
+- General treatment approaches
+- Medical tests and diagnosis methods
+- Skin health
+- Melanoma
+- Benign skin lesions
+- Acne
+- Eczema
+- Psoriasis
+- Vitiligo
+- Fungal infections
+- Allergies
+- Other common health conditions
+- DermaSense AI
+- MobileNetV2
+- Transfer learning
+- TensorFlow
+- Grad-CAM
+- Machine learning
+- Deep learning
+- Image classification
+- The user's latest DermaSense result
+- Other general educational questions
+
+IMPORTANT BEHAVIOR:
+
+1. Understand the actual meaning of the user's question.
+
+2. Do not force every question into a DermaSense prediction.
+
+3. If the user asks about a disease, explain it clearly.
+
+Useful information can include:
+- what the condition is
+- common symptoms
+- possible causes
+- risk factors
+- general prevention
+- general treatment approaches
+- how doctors may evaluate it
+- when professional medical attention may be appropriate
+
+4. Do not diagnose the user.
+
+Never say:
+"You have..."
+"You definitely have..."
+"This proves..."
+
+Instead use wording such as:
+"This condition can..."
+"Common symptoms may include..."
+"A healthcare professional can evaluate..."
+
+5. Never claim a DermaSense prediction confirms a disease.
+
+"Melanoma-suspicious" is only a machine-learning classification,
+not a melanoma diagnosis.
+
+"Benign-like" means the model found patterns more similar to its
+benign training examples. It does not guarantee that a lesion is harmless.
+
+"Other" means the image did not strongly fit the two main displayed
+skin categories.
+
+6. Grad-CAM shows regions that influenced the neural network.
+It does NOT show the exact location of cancer.
+
+7. The technical 3D skin visualization is illustrative.
+It is NOT a medical reconstruction of the person's skin.
+
+8. Do not provide personalized prescriptions or medication doses.
+
+You may explain general treatments that healthcare professionals
+commonly use for a condition.
+
+9. If someone describes a concerning, severe, rapidly changing,
+or persistent medical problem, recommend appropriate professional
+medical evaluation.
+
+10. Answer in simple, understandable language unless the user asks
+for a technical explanation.
+
+11. Use short headings and bullet points when they make the answer
+easier to understand.
+
+12. Do not repeatedly give a huge disclaimer.
+For health-related answers, add a short reminder at the end when useful:
+
+"Educational information only — a healthcare professional can provide
+a proper diagnosis."
+
+13. If the question is unrelated to medicine, you may still answer
+normal educational questions when possible.
+
+14. Never invent facts. If you are unsure, say so.
+
+Be helpful, clear, conversational, and concise.
+"""
+
+
+# =========================================================
+# GET GROQ API KEY
+# =========================================================
+
+def get_groq_api_key():
+
+    # First try environment variable
+
+    api_key = os.getenv(
+        "GROQ_API_KEY"
     )
 
-    return text
+    if api_key:
+        return api_key
+
+
+    # Then try Streamlit Secrets
+
+    try:
+
+        import streamlit as st
+
+        if "GROQ_API_KEY" in st.secrets:
+
+            return st.secrets[
+                "GROQ_API_KEY"
+            ]
+
+    except Exception:
+        pass
+
+
+    return None
 
 
 # =========================================================
-# GENERAL DISCLAIMER
+# BUILD DERMASENSE RESULT CONTEXT
 # =========================================================
 
-DISCLAIMER = (
-    "\n\n⚠️ **Important:** DermaGuide provides educational "
-    "information only. It cannot diagnose a skin condition "
-    "or recommend a personal treatment plan. A dermatologist "
-    "or qualified healthcare professional should evaluate "
-    "concerning skin changes."
-)
-
-
-# =========================================================
-# RESULT EXPLANATIONS
-# =========================================================
-
-def explain_prediction(prediction):
-
-    if prediction == "Benign-like":
-
-        return (
-            "### 🟢 What does Benign-like mean?\n\n"
-            "The ML model found visual patterns that were "
-            "more similar to the **benign examples** it learned "
-            "during training.\n\n"
-            "Benign generally means **non-cancerous**.\n\n"
-            "However, this result does **not prove that a lesion "
-            "is harmless**. If a spot changes noticeably or is "
-            "concerning, it should still be checked by a "
-            "qualified healthcare professional."
-            + DISCLAIMER
-        )
-
-
-    if prediction == "Melanoma-suspicious":
-
-        return (
-            "### 🟠 What does Melanoma-suspicious mean?\n\n"
-            "The ML model found image patterns that were more "
-            "similar to the **melanoma examples** in its training "
-            "data than to the benign examples.\n\n"
-            "This is only a **machine-learning screening result**. "
-            "It does **not confirm melanoma**.\n\n"
-            "Because melanoma can be serious, a suspicious lesion "
-            "should be assessed by a dermatologist or another "
-            "qualified healthcare professional."
-            + DISCLAIMER
-        )
-
-
-    return (
-        "### 🔵 What does Other mean?\n\n"
-        "The uploaded image did not fit the model's supported "
-        "**Benign-like** or **Melanoma-suspicious** patterns "
-        "strongly enough.\n\n"
-        "It may represent another type of skin image or an image "
-        "outside the model's intended categories.\n\n"
-        "DermaSense therefore displays the result as **Other** "
-        "instead of forcing it into a medical category."
-        + DISCLAIMER
-    )
-
-
-# =========================================================
-# POSSIBLE EFFECTS
-# =========================================================
-
-def explain_effects(prediction):
-
-    if prediction == "Melanoma-suspicious":
-
-        return (
-            "### ⚠️ Possible effects\n\n"
-            "If melanoma is actually diagnosed by a medical "
-            "professional, it is a type of skin cancer that can "
-            "become more serious if it spreads to other parts of "
-            "the body.\n\n"
-            "Early professional assessment is therefore important.\n\n"
-            "Remember that the DermaSense result itself does "
-            "**not mean that melanoma is present**."
-            + DISCLAIMER
-        )
-
-
-    if prediction == "Benign-like":
-
-        return (
-            "### 🟢 Possible effects\n\n"
-            "A benign skin lesion is generally non-cancerous and "
-            "many benign lesions cause little or no health problem.\n\n"
-            "Some can still change, become irritated, or require "
-            "professional evaluation depending on their appearance "
-            "and symptoms."
-            + DISCLAIMER
-        )
-
-
-    return (
-        "### 🔵 About this result\n\n"
-        "The **Other** category can contain many different kinds "
-        "of images, so DermaGuide cannot describe one specific "
-        "medical effect from this result alone.\n\n"
-        "A healthcare professional would need to examine an actual "
-        "skin concern to determine what it represents."
-        + DISCLAIMER
-    )
-
-
-# =========================================================
-# RISK REDUCTION / CONTROL
-# =========================================================
-
-def explain_control(prediction):
-
-    return (
-        "### 🛡️ General skin-health suggestions\n\n"
-        "These are general preventive measures rather than treatment:\n\n"
-        "- Reduce unnecessary intense UV exposure.\n"
-        "- Use appropriate sun protection when outdoors.\n"
-        "- Avoid intentionally tanning or burning the skin.\n"
-        "- Pay attention to noticeable changes in existing spots.\n"
-        "- Consider professional evaluation for a new or changing "
-        "skin lesion that concerns you.\n\n"
-        "For a **Melanoma-suspicious** ML result, the safest next "
-        "step is professional assessment rather than trying to "
-        "treat the lesion yourself."
-        + DISCLAIMER
-    )
-
-
-# =========================================================
-# TREATMENT INFORMATION
-# =========================================================
-
-def explain_treatment(prediction):
-
-    if prediction == "Melanoma-suspicious":
-
-        return (
-            "### 🏥 General treatment information\n\n"
-            "DermaSense cannot tell whether treatment is needed.\n\n"
-            "If melanoma is confirmed by medical testing, treatment "
-            "depends on factors such as its location, depth, stage "
-            "and the person's overall health.\n\n"
-            "Medical treatment may include **surgical removal**, "
-            "and some cases may require additional specialist "
-            "therapies.\n\n"
-            "The appropriate treatment must be selected by qualified "
-            "medical professionals after examination and testing."
-            + DISCLAIMER
-        )
-
-
-    if prediction == "Benign-like":
-
-        return (
-            "### 🏥 General treatment information\n\n"
-            "Many medically confirmed benign skin lesions do not "
-            "require treatment.\n\n"
-            "A healthcare professional may recommend monitoring or "
-            "removal depending on the lesion, symptoms and clinical "
-            "assessment.\n\n"
-            "Do not attempt to remove or treat a skin lesion yourself "
-            "based only on an ML result."
-            + DISCLAIMER
-        )
-
-
-    return (
-        "### 🏥 Treatment information\n\n"
-        "Because **Other** does not represent one specific medical "
-        "condition, there is no single treatment associated with it.\n\n"
-        "A qualified healthcare professional must first determine "
-        "what the skin concern actually is before discussing treatment."
-        + DISCLAIMER
-    )
-
-
-# =========================================================
-# WHY THE MODEL PREDICTED IT
-# =========================================================
-
-def explain_model_reason(
-    prediction,
+def build_prediction_context(
+    prediction=None,
     probabilities=None,
 ):
+
+    if not prediction:
+
+        return """
+No DermaSense image analysis result is currently active.
+
+The user may ask general questions about diseases, health,
+skin conditions, AI, DermaSense, or another educational topic.
+
+Do not tell the user to analyze an image unless it is actually
+relevant to their question.
+"""
+
+
+    # -----------------------------------------------------
+    # OTHER
+    # -----------------------------------------------------
+
+    if prediction == "Other":
+
+        return """
+Latest DermaSense classification:
+
+Result: Other
+
+Meaning:
+The image did not strongly match the application's displayed
+Benign-like or Melanoma-suspicious categories.
+
+Do not present confidence percentages for an Other result.
+
+Do not interpret Other as a specific disease.
+"""
+
 
     probabilities = probabilities or {}
 
@@ -230,288 +231,255 @@ def explain_model_reason(
     )
 
 
-    other = float(
-        probabilities.get(
-            "other",
-            0.0,
-        )
-    )
+    return f"""
+Latest DermaSense classification:
 
+Result: {prediction}
 
-    if prediction == "Benign-like":
+Neural responses:
+Benign-like: {benign * 100:.1f}%
+Melanoma: {melanoma * 100:.1f}%
 
-        return (
-            "### 🧠 Why did the ML model choose Benign-like?\n\n"
-            "The trained neural network extracted visual features "
-            "from the image and its **Benign-like response was the "
-            "strongest supported result**.\n\n"
-            f"Benign-like response: **{benign * 100:.1f}%**\n\n"
-            f"Melanoma response: **{melanoma * 100:.1f}%**\n\n"
-            "You can also view the **Grad-CAM attention map** in "
-            "DermaSense to see which image regions had more influence "
-            "on the model's decision."
-            + DISCLAIMER
-        )
+IMPORTANT:
 
+These are machine-learning response scores,
+not medical diagnostic probabilities.
 
-    if prediction == "Melanoma-suspicious":
+Do not claim that the result confirms or rules out disease.
 
-        return (
-            "### 🧠 Why did the ML model choose Melanoma-suspicious?\n\n"
-            "The neural network extracted visual features from the "
-            "image and its **melanoma response was stronger than its "
-            "benign response**.\n\n"
-            f"Melanoma response: **{melanoma * 100:.1f}%**\n\n"
-            f"Benign-like response: **{benign * 100:.1f}%**\n\n"
-            "The Grad-CAM map can help show which image regions "
-            "influenced this ML output.\n\n"
-            "This explains the **model's reasoning**, not a medical "
-            "diagnosis."
-            + DISCLAIMER
-        )
-
-
-    return (
-        "### 🧠 Why did the model choose Other?\n\n"
-        "DermaSense also learns patterns from images outside its two "
-        "main displayed skin categories.\n\n"
-        "The combined response for those patterns was stronger than "
-        "the supported Benign-like or Melanoma-suspicious responses, "
-        "so the app returned **Other** instead of forcing an unrelated "
-        "image into a medical category."
-        + DISCLAIMER
-    )
+Only discuss these scores when the user's question is related
+to the DermaSense result.
+"""
 
 
 # =========================================================
-# NEXT STEP
+# CLEAN CONVERSATION HISTORY
 # =========================================================
 
-def next_step(prediction):
+def prepare_history(
+    history=None,
+    current_message=None,
+):
 
-    if prediction == "Melanoma-suspicious":
+    if not history:
+        return []
 
-        return (
-            "### 👩‍⚕️ What should I do next?\n\n"
-            "A **Melanoma-suspicious** result from DermaSense should "
-            "not be treated as a diagnosis.\n\n"
-            "The appropriate next step is to show the concerning skin "
-            "lesion to a dermatologist or another qualified healthcare "
-            "professional for proper examination."
-            + DISCLAIMER
+
+    cleaned = []
+
+
+    # Keep recent messages so follow-up questions work
+
+    for item in history[-10:]:
+
+        if not isinstance(
+            item,
+            dict,
+        ):
+            continue
+
+
+        role = item.get(
+            "role"
         )
 
 
-    if prediction == "Benign-like":
-
-        return (
-            "### 👩‍⚕️ What should I do next?\n\n"
-            "A Benign-like ML result is reassuring only in the context "
-            "of this experimental classifier.\n\n"
-            "Continue paying attention to the skin area and seek "
-            "professional assessment if you notice concerning changes "
-            "or are unsure about the lesion."
-            + DISCLAIMER
-        )
+        content = str(
+            item.get(
+                "content",
+                "",
+            )
+        ).strip()
 
 
-    return (
-        "### 👩‍⚕️ What should I do next?\n\n"
-        "Because the image was classified as **Other**, DermaSense "
-        "cannot provide a specific skin interpretation.\n\n"
-        "If the image represents a real skin concern, consider "
-        "professional examination rather than relying on the classifier."
-        + DISCLAIMER
-    )
+        if (
+            role in [
+                "user",
+                "assistant",
+            ]
+            and
+            content
+        ):
+
+            cleaned.append(
+                {
+                    "role": role,
+                    "content": content,
+                }
+            )
+
+
+    # Avoid sending the current question twice
+
+    if (
+        current_message
+        and
+        cleaned
+        and
+        cleaned[-1]["role"] == "user"
+        and
+        cleaned[-1]["content"].strip()
+        ==
+        str(current_message).strip()
+    ):
+
+        cleaned = cleaned[:-1]
+
+
+    return cleaned
 
 
 # =========================================================
-# MAIN CHAT FUNCTION
+# MAIN DERMAGUIDE FUNCTION
 # =========================================================
 
 def dermaguide_reply(
     message,
-    prediction="Other",
+    prediction=None,
     probabilities=None,
+    history=None,
 ):
 
-    text = normalize_text(
+    question = str(
         message
-    )
+    ).strip()
 
 
-    # -----------------------------------------------------
-    # WHY / PREDICTION
-    # -----------------------------------------------------
-
-    if any(
-        word in text
-        for word in [
-            "why",
-            "predict",
-            "prediction",
-            "how predicted",
-            "reason",
-            "confidence",
-            "model",
-        ]
-    ):
-
-        return explain_model_reason(
-            prediction,
-            probabilities,
-        )
-
-
-    # -----------------------------------------------------
-    # EFFECTS
-    # -----------------------------------------------------
-
-    if any(
-        word in text
-        for word in [
-            "effect",
-            "effects",
-            "danger",
-            "serious",
-            "problem",
-            "happen",
-            "spread",
-        ]
-    ):
-
-        return explain_effects(
-            prediction
-        )
-
-
-    # -----------------------------------------------------
-    # PREVENTION / CONTROL
-    # -----------------------------------------------------
-
-    if any(
-        word in text
-        for word in [
-            "control",
-            "prevent",
-            "prevention",
-            "avoid",
-            "reduce",
-            "suggestion",
-            "suggestions",
-            "protect",
-        ]
-    ):
-
-        return explain_control(
-            prediction
-        )
-
-
-    # -----------------------------------------------------
-    # TREATMENT / CURE
-    # -----------------------------------------------------
-
-    if any(
-        word in text
-        for word in [
-            "cure",
-            "treatment",
-            "treat",
-            "medicine",
-            "remove",
-            "therapy",
-        ]
-    ):
-
-        return explain_treatment(
-            prediction
-        )
-
-
-    # -----------------------------------------------------
-    # NEXT STEP
-    # -----------------------------------------------------
-
-    if any(
-        phrase in text
-        for phrase in [
-            "what should i do",
-            "next step",
-            "what to do",
-            "doctor",
-            "dermatologist",
-            "hospital",
-        ]
-    ):
-
-        return next_step(
-            prediction
-        )
-
-
-    # -----------------------------------------------------
-    # MEANING
-    # -----------------------------------------------------
-
-    if any(
-        word in text
-        for word in [
-            "mean",
-            "meaning",
-            "explain",
-            "what is this",
-            "what is",
-        ]
-    ):
-
-        return explain_prediction(
-            prediction
-        )
-
-
-    # -----------------------------------------------------
-    # GREETING
-    # -----------------------------------------------------
-
-    if any(
-        word in text
-        for word in [
-            "hi",
-            "hello",
-            "hey",
-        ]
-    ):
+    if not question:
 
         return (
-            "### 👋 Hi, I'm DermaGuide AI\n\n"
-            f"Your current DermaSense result is "
-            f"**{prediction}**.\n\n"
-            "You can ask me:\n\n"
-            "- **Why did the model predict this?**\n"
-            "- **What does this result mean?**\n"
-            "- **What are the possible effects?**\n"
-            "- **How can risk be reduced?**\n"
-            "- **What treatments are generally used?**\n"
-            "- **What should I do next?**"
-            + DISCLAIMER
+            "Please type a question and I'll help explain it."
         )
 
 
     # -----------------------------------------------------
-    # DEFAULT
+    # API KEY
     # -----------------------------------------------------
 
-    return (
-        "### 🤖 DermaGuide AI\n\n"
-        f"I'm currently helping explain the DermaSense result: "
-        f"**{prediction}**.\n\n"
-        "Try asking one of these questions:\n\n"
-        "**Why was this predicted?**\n\n"
-        "**What does this mean?**\n\n"
-        "**What effects can it have?**\n\n"
-        "**How can the risk be reduced?**\n\n"
-        "**What treatment is generally used?**\n\n"
-        "**What should I do next?**"
-        + DISCLAIMER
+    api_key = get_groq_api_key()
+
+
+    if not api_key:
+
+        return (
+            "### DermaGuide AI is not connected yet\n\n"
+            "The Groq API key is missing from the application. "
+            "Add `GROQ_API_KEY` to Streamlit Secrets to enable "
+            "the intelligent chatbot."
+        )
+
+
+    # -----------------------------------------------------
+    # RESULT CONTEXT
+    # -----------------------------------------------------
+
+    result_context = build_prediction_context(
+        prediction=prediction,
+        probabilities=probabilities,
     )
+
+
+    # -----------------------------------------------------
+    # CONVERSATION HISTORY
+    # -----------------------------------------------------
+
+    previous_messages = prepare_history(
+        history=history,
+        current_message=question,
+    )
+
+
+    # -----------------------------------------------------
+    # CLIENT
+    # -----------------------------------------------------
+
+    try:
+
+        client = Groq(
+            api_key=api_key
+        )
+
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    SYSTEM_PROMPT
+                    +
+                    "\n\n"
+                    +
+                    "CURRENT DERMASENSE CONTEXT:\n"
+                    +
+                    result_context
+                ),
+            }
+        ]
+
+
+        # Add recent conversation
+
+        messages.extend(
+            previous_messages
+        )
+
+
+        # Add current question
+
+        messages.append(
+            {
+                "role": "user",
+                "content": question,
+            }
+        )
+
+
+        # -------------------------------------------------
+        # AI RESPONSE
+        # -------------------------------------------------
+
+        completion = (
+            client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=messages,
+                temperature=0.35,
+                max_tokens=900,
+            )
+        )
+
+
+        answer = (
+            completion
+            .choices[0]
+            .message
+            .content
+        )
+
+
+        if not answer:
+
+            return (
+                "I couldn't generate an answer. "
+                "Please try asking again."
+            )
+
+
+        return answer.strip()
+
+
+    # -----------------------------------------------------
+    # CONNECTION ERROR
+    # -----------------------------------------------------
+
+    except Exception as error:
+
+        print(
+            "DermaGuide AI error:",
+            error,
+        )
+
+
+        return (
+            "### DermaGuide AI connection problem\n\n"
+            "I couldn't reach the AI service right now. "
+            "Please try again in a moment."
+        )

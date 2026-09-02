@@ -60,16 +60,12 @@ if "dermaguide_messages" not in st.session_state:
 
 
 # =========================================================
-# TECHNICAL UI THEME
+# TECHNICAL THEME
 # =========================================================
 
 st.markdown(
     """
 <style>
-
-/* ======================================================
-   MAIN APP BACKGROUND
-   ====================================================== */
 
 .stApp {
     background:
@@ -84,13 +80,8 @@ st.markdown(
         ),
         radial-gradient(
             circle at 82% 10%,
-            rgba(0, 196, 235, 0.050),
+            rgba(0, 196, 235, 0.05),
             transparent 30%
-        ),
-        radial-gradient(
-            circle at 12% 50%,
-            rgba(34, 119, 153, 0.035),
-            transparent 35%
         ),
         linear-gradient(
             180deg,
@@ -103,7 +94,6 @@ st.markdown(
         38px 38px,
         38px 38px,
         auto,
-        auto,
         auto;
 }
 
@@ -115,34 +105,35 @@ st.markdown(
 }
 
 
-/* ======================================================
-   REMOVE EXTRA STREAMLIT BRANDING
-   DO NOT HIDE TOOLBAR COMPLETELY
-   ====================================================== */
-
 #MainMenu {
     visibility: hidden;
 }
+
 
 footer {
     visibility: hidden;
 }
 
+
 [data-testid="stDecoration"] {
     display: none;
 }
+
 
 [data-testid="stStatusWidget"] {
     display: none;
 }
 
+
 button[title="View fullscreen"] {
     display: none !important;
 }
 
+
 .stAppDeployButton {
     display: none !important;
 }
+
 
 [data-testid="stAppDeployButton"] {
     display: none !important;
@@ -150,7 +141,7 @@ button[title="View fullscreen"] {
 
 
 /* ======================================================
-   KEEP SIDEBAR OPEN/COLLAPSE CONTROL VISIBLE
+   SIDEBAR
    ====================================================== */
 
 [data-testid="stSidebarCollapsedControl"] {
@@ -159,16 +150,13 @@ button[title="View fullscreen"] {
     opacity: 1 !important;
 }
 
+
 [data-testid="collapsedControl"] {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
 }
 
-
-/* ======================================================
-   SIDEBAR
-   ====================================================== */
 
 [data-testid="stSidebar"] {
     background:
@@ -182,15 +170,6 @@ button[title="View fullscreen"] {
         1px solid rgba(66, 190, 220, 0.16);
 }
 
-
-[data-testid="stSidebar"] .block-container {
-    padding-top: 1.3rem;
-}
-
-
-/* ======================================================
-   SIDEBAR TECH STACK
-   ====================================================== */
 
 .tech-stack-card {
     background:
@@ -209,9 +188,6 @@ button[title="View fullscreen"] {
 
     margin-top: 5px;
     margin-bottom: 10px;
-
-    box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.025);
 }
 
 
@@ -236,25 +212,20 @@ button[title="View fullscreen"] {
 
 .tech-name {
     color: #66899d;
-
     font-size: 10px;
 }
 
 
 .tech-value {
     color: #d8edf5;
-
     font-size: 10px;
-
     font-weight: 700;
-
     text-align: right;
 }
 
 
 .model-ready {
     display: flex;
-
     align-items: center;
 
     gap: 8px;
@@ -272,7 +243,6 @@ button[title="View fullscreen"] {
     color: #58e7bc;
 
     font-size: 10px;
-
     font-weight: 700;
 }
 
@@ -304,7 +274,6 @@ button[title="View fullscreen"] {
     color: #849dac;
 
     font-size: 9px;
-
     line-height: 1.8;
 }
 
@@ -317,13 +286,12 @@ h1,
 h2,
 h3 {
     color: #e8f4fa !important;
-
     letter-spacing: -0.02em;
 }
 
 
 /* ======================================================
-   BORDERED CONTAINERS
+   CONTAINERS
    ====================================================== */
 
 [data-testid="stVerticalBlockBorderWrapper"] {
@@ -339,7 +307,7 @@ h3 {
 
 
 /* ======================================================
-   FILE UPLOAD / CAMERA
+   UPLOAD / CAMERA
    ====================================================== */
 
 [data-testid="stFileUploader"] {
@@ -390,9 +358,6 @@ div.stButton > button {
     font-weight: 700;
 
     min-height: 38px;
-
-    box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.04);
 
     transition:
         all .2s ease;
@@ -446,7 +411,7 @@ div.stButton > button:hover {
 
 
 /* ======================================================
-   FINAL CLASSIFICATION CARD
+   FINAL RESULT
    ====================================================== */
 
 .final-card {
@@ -463,9 +428,6 @@ div.stButton > button:hover {
             rgba(5,24,39,.97),
             rgba(7,34,52,.84)
         );
-
-    box-shadow:
-        0 16px 45px rgba(0,0,0,.20);
 }
 
 
@@ -590,6 +552,25 @@ div.stButton > button:hover {
     font-weight: 700;
 }
 
+
+.dermaguide-info {
+    padding: 14px 16px;
+
+    background:
+        rgba(7, 39, 57, .72);
+
+    border:
+        1px solid rgba(56, 196, 219, .17);
+
+    border-radius: 12px;
+
+    color: #98b6c5;
+
+    line-height: 1.55;
+
+    font-size: 13px;
+}
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -597,7 +578,7 @@ div.stButton > button:hover {
 
 
 # =========================================================
-# IMAGE TO BASE64
+# IMAGE → BASE64
 # =========================================================
 
 def image_to_base64(image):
@@ -641,9 +622,7 @@ def render_processing_animation(
 
     processing_html = """
 <!DOCTYPE html>
-
 <html>
-
 <head>
 
 <style>
@@ -655,28 +634,18 @@ def render_processing_animation(
 
 body {
     margin: 0;
-
     overflow: hidden;
-
     background: transparent;
-
-    font-family:
-        Inter,
-        Arial,
-        Helvetica,
-        sans-serif;
+    font-family: Arial, sans-serif;
 }
 
 
 .root {
     width: 100%;
-
     height: 355px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 }
 
@@ -685,9 +654,7 @@ body {
     position: relative;
 
     width: 790px;
-
     max-width: 96%;
-
     height: 320px;
 
     overflow: hidden;
@@ -723,21 +690,13 @@ body {
 
     border:
         1px solid rgba(58,201,228,.25);
-
-    box-shadow:
-        0 20px 55px rgba(0,0,0,.28);
 }
 
-
-/* ======================================================
-   HEADER
-   ====================================================== */
 
 .header {
     height: 54px;
 
     display: flex;
-
     align-items: center;
 
     padding: 0 19px;
@@ -749,7 +708,6 @@ body {
 
 .live-dot {
     width: 8px;
-
     height: 8px;
 
     margin-right: 9px;
@@ -762,9 +720,7 @@ body {
         0 0 12px #4cf0bb;
 
     animation:
-        pulse
-        1s
-        infinite;
+        pulse 1s infinite;
 }
 
 
@@ -788,25 +744,17 @@ body {
 }
 
 
-/* ======================================================
-   IMAGE ANALYSIS AREA
-   ====================================================== */
-
 .image-zone {
     position: absolute;
 
     left: 29px;
-
     top: 74px;
 
     width: 290px;
-
     height: 210px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     perspective: 950px;
@@ -817,11 +765,9 @@ body {
     position: relative;
 
     width: 215px;
-
     height: 170px;
 
-    transform-style:
-        preserve-3d;
+    transform-style: preserve-3d;
 
     animation:
         modelMove
@@ -831,50 +777,13 @@ body {
 }
 
 
-.back {
-    position: absolute;
-
-    left: 9px;
-
-    top: 8px;
-
-    width: 198px;
-
-    height: 145px;
-
-    border-radius: 14px;
-
-    background:
-        rgba(24,69,89,.28);
-
-    border:
-        1px solid rgba(66,212,235,.13);
-}
-
-
-.back1 {
-    transform:
-        translateZ(-29px)
-        translate(11px,9px);
-}
-
-
-.back2 {
-    transform:
-        translateZ(-15px)
-        translate(6px,5px);
-}
-
-
 .image-face {
     position: absolute;
 
     left: 9px;
-
     top: 8px;
 
     width: 198px;
-
     height: 145px;
 
     overflow: hidden;
@@ -886,15 +795,11 @@ body {
 
     border:
         1px solid rgba(64,226,247,.46);
-
-    box-shadow:
-        0 14px 30px rgba(0,0,0,.28);
 }
 
 
 .image-face img {
     width: 100%;
-
     height: 100%;
 
     object-fit: cover;
@@ -919,7 +824,8 @@ body {
             transparent 1px
         );
 
-    background-size: 22px 22px;
+    background-size:
+        22px 22px;
 
     animation:
         gridShow
@@ -933,11 +839,9 @@ body {
     position: absolute;
 
     left: 0;
-
     top: 5px;
 
     width: 100%;
-
     height: 4px;
 
     background:
@@ -983,17 +887,11 @@ body {
 }
 
 
-/* ======================================================
-   PIPELINE
-   ====================================================== */
-
 .pipeline {
     position: absolute;
 
     left: 347px;
-
     right: 22px;
-
     top: 74px;
 
     height: 210px;
@@ -1025,7 +923,6 @@ body {
     height: 29px;
 
     display: flex;
-
     align-items: center;
 
     padding: 0 9px;
@@ -1048,15 +945,12 @@ body {
 
 .step-number {
     width: 19px;
-
     height: 19px;
 
     margin-right: 8px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     border-radius: 50%;
@@ -1074,27 +968,6 @@ body {
     color: #4beeb7;
 
     opacity: 0;
-}
-
-
-.s1 {
-    animation: stage1 5.2s linear forwards;
-}
-
-.s2 {
-    animation: stage2 5.2s linear forwards;
-}
-
-.s3 {
-    animation: stage3 5.2s linear forwards;
-}
-
-.s4 {
-    animation: stage4 5.2s linear forwards;
-}
-
-.s5 {
-    animation: stage5 5.2s linear forwards;
 }
 
 
@@ -1119,10 +992,6 @@ body {
 }
 
 
-/* ======================================================
-   PROGRESS
-   ====================================================== */
-
 .progress {
     height: 5px;
 
@@ -1138,7 +1007,6 @@ body {
 
 .progress-value {
     width: 0;
-
     height: 100%;
 
     background:
@@ -1156,10 +1024,6 @@ body {
         forwards;
 }
 
-
-/* ======================================================
-   ANIMATIONS
-   ====================================================== */
 
 @keyframes pulse {
 
@@ -1184,23 +1048,16 @@ body {
             rotateX(3deg);
     }
 
-    28% {
+    40% {
         transform:
             rotateY(11deg)
             rotateX(-3deg);
     }
 
-    55% {
+    70% {
         transform:
-            rotateY(-8deg)
-            rotateX(5deg)
-            scale(1.03);
-    }
-
-    78% {
-        transform:
-            rotateY(7deg)
-            rotateX(-2deg);
+            rotateY(-7deg)
+            rotateX(4deg);
     }
 
     100% {
@@ -1226,16 +1083,15 @@ body {
 @keyframes gridShow {
 
     0%,
-    29% {
+    25% {
         opacity: 0;
     }
 
-    38%,
-    76% {
+    40%,
+    80% {
         opacity: .72;
     }
 
-    90%,
     100% {
         opacity: .08;
     }
@@ -1253,92 +1109,9 @@ body {
 }
 
 
-@keyframes stage1 {
-
-    0%,
-    18% {
-        color: white;
-        border-color: #45e8ff;
-    }
-}
-
-
-@keyframes stage2 {
-
-    0%,
-    19% {
-        opacity: .40;
-    }
-
-    21%,
-    38% {
-        opacity: 1;
-
-        color: white;
-
-        border-color: #469fe7;
-    }
-}
-
-
-@keyframes stage3 {
-
-    0%,
-    39% {
-        opacity: .40;
-    }
-
-    41%,
-    58% {
-        opacity: 1;
-
-        color: white;
-
-        border-color: #557dde;
-    }
-}
-
-
-@keyframes stage4 {
-
-    0%,
-    59% {
-        opacity: .40;
-    }
-
-    61%,
-    78% {
-        opacity: 1;
-
-        color: white;
-
-        border-color: #6c69d9;
-    }
-}
-
-
-@keyframes stage5 {
-
-    0%,
-    79% {
-        opacity: .40;
-    }
-
-    81%,
-    100% {
-        opacity: 1;
-
-        color: white;
-
-        border-color: #49c9dd;
-    }
-}
-
-
 @keyframes done1 {
 
     0%,19% { opacity: 0; }
-
     20%,100% { opacity: 1; }
 }
 
@@ -1346,7 +1119,6 @@ body {
 @keyframes done2 {
 
     0%,39% { opacity: 0; }
-
     40%,100% { opacity: 1; }
 }
 
@@ -1354,7 +1126,6 @@ body {
 @keyframes done3 {
 
     0%,59% { opacity: 0; }
-
     60%,100% { opacity: 1; }
 }
 
@@ -1362,7 +1133,6 @@ body {
 @keyframes done4 {
 
     0%,79% { opacity: 0; }
-
     80%,100% { opacity: 1; }
 }
 
@@ -1370,7 +1140,6 @@ body {
 @keyframes done5 {
 
     0%,96% { opacity: 0; }
-
     97%,100% { opacity: 1; }
 }
 
@@ -1378,15 +1147,11 @@ body {
 
 </head>
 
-
 <body>
-
 
 <div class="root">
 
-
 <div class="processor">
-
 
 <div class="header">
 
@@ -1405,19 +1170,11 @@ INFERENCE ACTIVE
 
 <div class="image-zone">
 
-
 <div class="stack">
-
-<div class="back back1"></div>
-
-<div class="back back2"></div>
-
 
 <div class="image-face">
 
-<img
-src="data:image/jpeg;base64,__IMAGE__"
-/>
+<img src="data:image/jpeg;base64,__IMAGE__"/>
 
 <div class="grid"></div>
 
@@ -1425,19 +1182,16 @@ src="data:image/jpeg;base64,__IMAGE__"
 
 </div>
 
-
 <div class="filename">
 __FILENAME__
 </div>
 
 </div>
 
-
 </div>
 
 
 <div class="pipeline">
-
 
 <div class="pipeline-title">
 Inference Pipeline
@@ -1525,15 +1279,11 @@ Classification output generated
 
 </div>
 
+</div>
 
 </div>
 
-
 </div>
-
-
-</div>
-
 
 </body>
 
@@ -1545,6 +1295,7 @@ Classification output generated
         "__IMAGE__",
         image_data,
     )
+
 
     processing_html = processing_html.replace(
         "__FILENAME__",
@@ -1560,7 +1311,7 @@ Classification output generated
 
 
 # =========================================================
-# CONNECTED TECHNICAL 3D VISUALIZATION
+# CONNECTED 3D SKIN VISUALIZATION
 # =========================================================
 
 def render_connected_3d_skin(
@@ -1575,13 +1326,13 @@ def render_connected_3d_skin(
 
     if prediction == "Benign-like":
         accent = "#43dfc0"
+
     else:
         accent = "#ff6d99"
 
 
     visual_html = """
 <!DOCTYPE html>
-
 <html>
 
 <head>
@@ -1601,22 +1352,18 @@ body {
     background: transparent;
 
     font-family:
-        Inter,
         Arial,
-        Helvetica,
         sans-serif;
 }
 
 
 .root {
     width: 100%;
-
     height: 500px;
 
     display: flex;
 
     justify-content: center;
-
     align-items: center;
 }
 
@@ -1625,7 +1372,6 @@ body {
     position: relative;
 
     width: 960px;
-
     max-width: 98%;
 
     height: 470px;
@@ -1663,15 +1409,8 @@ body {
 
     border:
         1px solid rgba(58,199,225,.22);
-
-    box-shadow:
-        0 20px 58px rgba(0,0,0,.22);
 }
 
-
-/* ======================================================
-   HEADER
-   ====================================================== */
 
 .header {
     height: 58px;
@@ -1689,13 +1428,11 @@ body {
 
 .header-icon {
     width: 30px;
-
     height: 30px;
 
     display: flex;
 
     justify-content: center;
-
     align-items: center;
 
     margin-right: 9px;
@@ -1757,7 +1494,6 @@ body {
 
 .status-dot {
     width: 6px;
-
     height: 6px;
 
     border-radius: 50%;
@@ -1766,17 +1502,12 @@ body {
 }
 
 
-/* ======================================================
-   LEFT PANEL
-   ====================================================== */
-
 .scene-panel {
     position: absolute;
 
     left: 17px;
 
     top: 73px;
-
     bottom: 17px;
 
     width: 625px;
@@ -1800,7 +1531,6 @@ body {
     position: absolute;
 
     left: 16px;
-
     top: 14px;
 
     color: #dceaf2;
@@ -1815,7 +1545,6 @@ body {
     position: absolute;
 
     left: 16px;
-
     top: 30px;
 
     color: #5d7b8e;
@@ -1824,25 +1553,18 @@ body {
 }
 
 
-/* ======================================================
-   3D SCENE
-   ====================================================== */
-
 .scene {
     position: absolute;
 
     left: 0;
-
     right: 0;
 
     top: 42px;
-
     bottom: 0;
 
     display: flex;
 
     align-items: center;
-
     justify-content: center;
 
     perspective: 1150px;
@@ -1853,7 +1575,6 @@ body {
     position: relative;
 
     width: 480px;
-
     height: 270px;
 
     transform-style:
@@ -1872,19 +1593,13 @@ body {
 }
 
 
-/* ======================================================
-   USER IMAGE SURFACE
-   ====================================================== */
-
 .surface {
     position: absolute;
 
     left: 44px;
-
     top: 19px;
 
     width: 390px;
-
     height: 175px;
 
     overflow: hidden;
@@ -1893,16 +1608,10 @@ body {
         16px 16px 3px 3px;
 
     transform:
-        translateZ(55px)
-        translateY(0);
-
-    background: #d78f83;
+        translateZ(55px);
 
     border:
         1px solid rgba(64,222,244,.40);
-
-    box-shadow:
-        0 12px 30px rgba(0,0,0,.24);
 
     animation:
         surfaceMotion
@@ -1914,30 +1623,9 @@ body {
 
 .surface img {
     width: 100%;
-
     height: 100%;
 
     object-fit: cover;
-}
-
-
-.surface-grid {
-    position: absolute;
-
-    inset: 0;
-
-    background-image:
-        linear-gradient(
-            rgba(56,215,236,.07) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(56,215,236,.07) 1px,
-            transparent 1px
-        );
-
-    background-size: 27px 27px;
 }
 
 
@@ -1945,11 +1633,9 @@ body {
     position: absolute;
 
     left: 0;
-
     top: 6px;
 
     width: 100%;
-
     height: 4px;
 
     opacity: 0;
@@ -1975,19 +1661,13 @@ body {
 }
 
 
-/* ======================================================
-   EPIDERMIS
-   ====================================================== */
-
 .epidermis {
     position: absolute;
 
     left: 48px;
-
     top: 188px;
 
     width: 382px;
-
     height: 24px;
 
     background:
@@ -1998,8 +1678,7 @@ body {
         );
 
     transform:
-        translateZ(40px)
-        translateY(0);
+        translateZ(40px);
 
     animation:
         epidermisMotion
@@ -2009,19 +1688,13 @@ body {
 }
 
 
-/* ======================================================
-   DERMIS
-   ====================================================== */
-
 .dermis {
     position: absolute;
 
     left: 48px;
-
     top: 211px;
 
     width: 382px;
-
     height: 78px;
 
     overflow: hidden;
@@ -2029,13 +1702,12 @@ body {
     background:
         linear-gradient(
             180deg,
-            #a65e6f 0%,
-            #79485d 100%
+            #a65e6f,
+            #79485d
         );
 
     transform:
-        translateZ(28px)
-        translateY(0);
+        translateZ(28px);
 
     animation:
         dermisMotion
@@ -2045,37 +1717,13 @@ body {
 }
 
 
-.dermis-texture {
-    position: absolute;
-
-    inset: 0;
-
-    opacity: .32;
-
-    background-image:
-        radial-gradient(
-            circle,
-            rgba(241,170,169,.40) 1px,
-            transparent 2px
-        );
-
-    background-size: 15px 14px;
-}
-
-
-/* ======================================================
-   SUBCUTANEOUS
-   ====================================================== */
-
 .subcutaneous {
     position: absolute;
 
     left: 48px;
-
     top: 287px;
 
     width: 382px;
-
     height: 39px;
 
     border-radius:
@@ -2092,11 +1740,11 @@ body {
     background-size:
         25px 22px;
 
-    background-color: #b98035;
+    background-color:
+        #b98035;
 
     transform:
-        translateZ(17px)
-        translateY(0);
+        translateZ(17px);
 
     animation:
         subcutaneousMotion
@@ -2106,37 +1754,34 @@ body {
 }
 
 
-/* ======================================================
-   NERVES AND BLOOD VESSELS
-   ====================================================== */
-
 .anatomy {
     position: absolute;
 
     left: 0;
-
     top: 5px;
 
     width: 100%;
-
     height: 70px;
-
-    z-index: 5;
 }
 
 
 .nerve {
     fill: none;
 
-    stroke: #ebbe68;
+    stroke:
+        #ebbe68;
 
-    stroke-width: 2;
+    stroke-width:
+        2;
 
-    stroke-linecap: round;
+    stroke-linecap:
+        round;
 
-    stroke-dasharray: 240;
+    stroke-dasharray:
+        240;
 
-    stroke-dashoffset: 240;
+    stroke-dashoffset:
+        240;
 
     animation:
         nerveDraw
@@ -2146,39 +1791,20 @@ body {
 }
 
 
-.branch {
-    fill: none;
-
-    stroke: #dda954;
-
-    stroke-width: 1.2;
-
-    stroke-linecap: round;
-
-    stroke-dasharray: 90;
-
-    stroke-dashoffset: 90;
-
-    animation:
-        branchDraw
-        5.3s
-        ease-out
-        forwards;
-}
-
-
 .vessel-red {
     fill: none;
 
-    stroke: #d45b60;
+    stroke:
+        #d45b60;
 
-    stroke-width: 2.3;
+    stroke-width:
+        2.3;
 
-    stroke-linecap: round;
+    stroke-dasharray:
+        400;
 
-    stroke-dasharray: 400;
-
-    stroke-dashoffset: 400;
+    stroke-dashoffset:
+        400;
 
     animation:
         vesselDraw
@@ -2191,15 +1817,17 @@ body {
 .vessel-blue {
     fill: none;
 
-    stroke: #4789bc;
+    stroke:
+        #4789bc;
 
-    stroke-width: 2.3;
+    stroke-width:
+        2.3;
 
-    stroke-linecap: round;
+    stroke-dasharray:
+        400;
 
-    stroke-dasharray: 400;
-
-    stroke-dashoffset: 400;
+    stroke-dashoffset:
+        400;
 
     animation:
         vesselDraw
@@ -2209,30 +1837,12 @@ body {
 }
 
 
-.node {
-    fill: #54ddf7;
-
-    opacity: 0;
-
-    animation:
-        nodeGlow
-        5.3s
-        ease-in-out
-        forwards;
-}
-
-
-/* ======================================================
-   INFORMATION PANEL
-   ====================================================== */
-
 .info-panel {
     position: absolute;
 
     right: 17px;
 
     top: 73px;
-
     bottom: 17px;
 
     width: 283px;
@@ -2250,13 +1860,17 @@ body {
 
 
 .info-title {
-    color: #dceaf2;
+    color:
+        #dceaf2;
 
-    font-size: 10px;
+    font-size:
+        10px;
 
-    font-weight: 700;
+    font-weight:
+        700;
 
-    margin-bottom: 12px;
+    margin-bottom:
+        12px;
 }
 
 
@@ -2278,26 +1892,16 @@ body {
 
     border:
         1px solid rgba(73,136,163,.09);
-
-    opacity: .32;
-
-    animation:
-        infoReveal
-        5.3s
-        ease-out
-        forwards;
 }
 
 
 .code {
     width: 29px;
-
     height: 29px;
 
     display: flex;
 
     justify-content: center;
-
     align-items: center;
 
     border-radius: 7px;
@@ -2312,64 +1916,25 @@ body {
 
 
 .info-name {
-    color: #cbdde6;
+    color:
+        #cbdde6;
 
-    font-size: 7px;
+    font-size:
+        7px;
 
-    font-weight: 700;
+    font-weight:
+        700;
 }
 
 
 .info-desc {
-    color: #5e7d90;
+    color:
+        #5e7d90;
 
-    font-size: 5.5px;
-
-    margin-top: 2px;
+    font-size:
+        5.5px;
 }
 
-
-/* ======================================================
-   END STATUS
-   ====================================================== */
-
-.settled {
-    position: absolute;
-
-    left: 50%;
-
-    bottom: 15px;
-
-    transform:
-        translateX(-50%);
-
-    opacity: 0;
-
-    padding: 5px 10px;
-
-    border-radius: 13px;
-
-    color: #5fe6bb;
-
-    font-size: 6px;
-
-    background:
-        rgba(40,157,117,.09);
-
-    border:
-        1px solid rgba(74,223,173,.16);
-
-    animation:
-        settledReveal
-        5.3s
-        ease-in-out
-        forwards;
-}
-
-
-/* ======================================================
-   ANIMATION
-   ====================================================== */
 
 @keyframes wholeModel {
 
@@ -2385,21 +1950,6 @@ body {
 
     15% {
         opacity: 1;
-    }
-
-    32% {
-        transform:
-            rotateX(52deg)
-            rotateY(6deg)
-            rotateZ(-3deg);
-    }
-
-    68% {
-        transform:
-            rotateX(52deg)
-            rotateY(-7deg)
-            rotateZ(-3deg)
-            scale(1.015);
     }
 
     100% {
@@ -2419,8 +1969,7 @@ body {
     0%,
     18% {
         transform:
-            translateZ(55px)
-            translateY(0);
+            translateZ(55px);
     }
 
     36%,
@@ -2430,16 +1979,9 @@ body {
             translateY(-22px);
     }
 
-    77% {
-        transform:
-            translateZ(60px)
-            translateY(-4px);
-    }
-
     100% {
         transform:
-            translateZ(55px)
-            translateY(0);
+            translateZ(55px);
     }
 }
 
@@ -2449,8 +1991,7 @@ body {
     0%,
     18% {
         transform:
-            translateZ(40px)
-            translateY(0);
+            translateZ(40px);
     }
 
     36%,
@@ -2460,11 +2001,9 @@ body {
             translateY(10px);
     }
 
-    78%,
     100% {
         transform:
-            translateZ(40px)
-            translateY(0);
+            translateZ(40px);
     }
 }
 
@@ -2474,8 +2013,7 @@ body {
     0%,
     18% {
         transform:
-            translateZ(28px)
-            translateY(0);
+            translateZ(28px);
     }
 
     36%,
@@ -2485,11 +2023,9 @@ body {
             translateY(23px);
     }
 
-    78%,
     100% {
         transform:
-            translateZ(28px)
-            translateY(0);
+            translateZ(28px);
     }
 }
 
@@ -2499,8 +2035,7 @@ body {
     0%,
     18% {
         transform:
-            translateZ(17px)
-            translateY(0);
+            translateZ(17px);
     }
 
     36%,
@@ -2510,11 +2045,9 @@ body {
             translateY(37px);
     }
 
-    78%,
     100% {
         transform:
-            translateZ(17px)
-            translateY(0);
+            translateZ(17px);
     }
 }
 
@@ -2522,9 +2055,8 @@ body {
 @keyframes surfaceScan {
 
     0%,
-    9% {
+    10% {
         opacity: 0;
-
         top: 5px;
     }
 
@@ -2532,17 +2064,8 @@ body {
         opacity: 1;
     }
 
-    27% {
-        top: 164px;
-    }
-
-    34% {
-        top: 14px;
-    }
-
     42% {
         top: 164px;
-
         opacity: 1;
     }
 
@@ -2557,26 +2080,14 @@ body {
 
     0%,
     31% {
-        stroke-dashoffset: 240;
+        stroke-dashoffset:
+            240;
     }
 
     63%,
     100% {
-        stroke-dashoffset: 0;
-    }
-}
-
-
-@keyframes branchDraw {
-
-    0%,
-    36% {
-        stroke-dashoffset: 90;
-    }
-
-    67%,
-    100% {
-        stroke-dashoffset: 0;
+        stroke-dashoffset:
+            0;
     }
 }
 
@@ -2585,71 +2096,14 @@ body {
 
     0%,
     33% {
-        stroke-dashoffset: 400;
+        stroke-dashoffset:
+            400;
     }
 
     69%,
     100% {
-        stroke-dashoffset: 0;
-    }
-}
-
-
-@keyframes nodeGlow {
-
-    0%,
-    40% {
-        opacity: 0;
-    }
-
-    54% {
-        opacity: 1;
-
-        filter:
-            drop-shadow(
-                0 0 5px
-                #54ddf7
-            );
-    }
-
-    100% {
-        opacity: .75;
-
-        filter: none;
-    }
-}
-
-
-@keyframes infoReveal {
-
-    0%,
-    28% {
-        opacity: .25;
-
-        transform:
-            translateX(4px);
-    }
-
-    55%,
-    100% {
-        opacity: 1;
-
-        transform:
-            translateX(0);
-    }
-}
-
-
-@keyframes settledReveal {
-
-    0%,
-    79% {
-        opacity: 0;
-    }
-
-    88%,
-    100% {
-        opacity: 1;
+        stroke-dashoffset:
+            0;
     }
 }
 
@@ -2662,7 +2116,6 @@ body {
 
 
 <div class="root">
-
 
 <div class="card">
 
@@ -2719,11 +2172,7 @@ Uploaded surface image with illustrative internal layers
 
 <div class="surface">
 
-<img
-src="data:image/jpeg;base64,__IMAGE__"
-/>
-
-<div class="surface-grid"></div>
+<img src="data:image/jpeg;base64,__IMAGE__"/>
 
 <div class="analysis-line"></div>
 
@@ -2734,9 +2183,6 @@ src="data:image/jpeg;base64,__IMAGE__"
 
 
 <div class="dermis">
-
-
-<div class="dermis-texture"></div>
 
 
 <svg
@@ -2781,39 +2227,6 @@ S281 51,
 
 
 <path
-class="branch"
-d="
-M98 30
-C94 20,
-90 13,
-86 5
-"
-/>
-
-
-<path
-class="branch"
-d="
-M173 44
-C175 29,
-179 19,
-185 7
-"
-/>
-
-
-<path
-class="branch"
-d="
-M246 28
-C252 19,
-260 12,
-267 5
-"
-/>
-
-
-<path
 class="vessel-red"
 d="
 M5 57
@@ -2839,52 +2252,16 @@ S250 54,
 />
 
 
-<circle
-class="node"
-cx="86"
-cy="5"
-r="2.5"
-/>
-
-
-<circle
-class="node"
-cx="185"
-cy="7"
-r="2.5"
-/>
-
-
-<circle
-class="node"
-cx="267"
-cy="5"
-r="2.5"
-/>
-
-
-<circle
-class="node"
-cx="234"
-cy="52"
-r="2.5"
-/>
-
-
 </svg>
-
 
 </div>
 
 
 <div class="subcutaneous"></div>
 
-
 </div>
 
-
 </div>
-
 
 </div>
 
@@ -3001,20 +2378,11 @@ Illustrative lower tissue
 
 </div>
 
+</div>
 
 </div>
 
-
-<div class="settled">
-CONNECTED MODEL READY
 </div>
-
-
-</div>
-
-
-</div>
-
 
 </body>
 
@@ -3026,6 +2394,7 @@ CONNECTED MODEL READY
         "__IMAGE__",
         image_data,
     )
+
 
     visual_html = visual_html.replace(
         "__ACCENT__",
@@ -3056,6 +2425,7 @@ def render_final_prediction(
         )
     )
 
+
     melanoma = float(
         probabilities.get(
             "melanoma",
@@ -3063,10 +2433,6 @@ def render_final_prediction(
         )
     )
 
-
-    # =====================================================
-    # OTHER
-    # =====================================================
 
     if prediction == "Other":
 
@@ -3076,8 +2442,8 @@ def render_final_prediction(
 <div class="final-label">CLASSIFICATION OUTPUT</div>
 <div class="final-other">Other</div>
 <div class="final-description">
-The Other / rejection response was stronger than the supported
-Benign-like and Melanoma-suspicious responses.
+The image produced a stronger response for the model's
+Other / rejection category.
 </div>
 </div>""",
             unsafe_allow_html=True,
@@ -3086,38 +2452,34 @@ Benign-like and Melanoma-suspicious responses.
         return
 
 
-    # =====================================================
-    # BENIGN
-    # =====================================================
-
     if prediction == "Benign-like":
 
-        result_class = "final-benign"
+        result_class = (
+            "final-benign"
+        )
 
         description = (
             "The Benign-like neural response was stronger "
             "than the melanoma response."
         )
 
-
-    # =====================================================
-    # MELANOMA
-    # =====================================================
-
     else:
 
-        result_class = "final-melanoma"
+        result_class = (
+            "final-melanoma"
+        )
 
         description = (
-            "The melanoma neural response was stronger than "
-            "the Benign-like response. This machine-learning "
-            "result does not confirm melanoma."
+            "The melanoma neural response was stronger "
+            "than the Benign-like response. "
+            "This ML result does not confirm melanoma."
         )
 
 
     safe_prediction = html.escape(
         prediction
     )
+
 
     safe_description = html.escape(
         description
@@ -3138,11 +2500,6 @@ Benign-like and Melanoma-suspicious responses.
         unsafe_allow_html=True,
     )
 
-
-    # =====================================================
-    # NO MODEL CONFIDENCE
-    # ONLY BENIGN + MELANOMA RESPONSES
-    # =====================================================
 
     left_gap, benign_col, melanoma_col, right_gap = st.columns(
         [
@@ -3239,6 +2596,7 @@ def add_history(
                     last[0],
                     "%Y-%m-%d %H:%M:%S",
                 )
+
 
                 seconds = (
                     now
@@ -3369,104 +2727,6 @@ def get_metadata():
 
 
 # =========================================================
-# GENERAL DERMAGUIDE FALLBACK
-# =========================================================
-
-def general_dermaguide_reply(
-    question,
-):
-
-    q = question.lower()
-
-
-    if (
-        "grad" in q
-        or
-        "attention" in q
-    ):
-
-        return (
-            "**Grad-CAM** is an explainability method that highlights "
-            "image regions that had greater influence on a neural-network "
-            "prediction. It shows model attention, not a confirmed "
-            "medical abnormality."
-        )
-
-
-    if (
-        "mobilenet" in q
-        or
-        "model" in q
-        or
-        "ai work" in q
-    ):
-
-        return (
-            "DermaSense uses **MobileNetV2 transfer learning**. "
-            "The uploaded image is resized to 224 × 224 RGB, processed "
-            "through the network, converted into learned visual features, "
-            "and compared across the trained output classes."
-        )
-
-
-    if "benign" in q:
-
-        return (
-            "**Benign** generally means non-cancerous. In DermaSense, "
-            "`Benign-like` means the image produced a stronger response "
-            "for visual patterns learned from the benign training examples. "
-            "It is not a medical diagnosis."
-        )
-
-
-    if "melanoma" in q:
-
-        return (
-            "Melanoma is a serious type of skin cancer involving "
-            "pigment-producing cells. A DermaSense "
-            "`Melanoma-suspicious` result is only a machine-learning "
-            "classification and cannot confirm melanoma."
-        )
-
-
-    if (
-        "risk" in q
-        or
-        "protect" in q
-        or
-        "prevent" in q
-    ):
-
-        return (
-            "General skin-risk reduction includes limiting excessive "
-            "UV exposure, using suitable sun protection, avoiding tanning "
-            "devices, and seeking professional evaluation for skin changes "
-            "that are new, changing, unusual, or concerning."
-        )
-
-
-    if (
-        "treatment" in q
-        or
-        "cure" in q
-    ):
-
-        return (
-            "Treatment depends on the actual medical diagnosis and cannot "
-            "be determined from an AI image classification. Healthcare "
-            "professionals may use examination, dermoscopy, biopsy, and "
-            "other tests before deciding on treatment."
-        )
-
-
-    return (
-        "I can explain **MobileNetV2, transfer learning, Grad-CAM, "
-        "Benign-like results, Melanoma-suspicious results, general "
-        "skin-risk information, and how DermaSense processes images**."
-    )
-
-
-# =========================================================
 # SIDEBAR
 # =========================================================
 
@@ -3476,9 +2736,11 @@ with st.sidebar:
         "🔬 DermaSense AI"
     )
 
+
     st.caption(
         "AI-Powered Skin Image Analysis"
     )
+
 
     st.write("")
 
@@ -3592,9 +2854,11 @@ with st.container(
         "EXPLAINABLE MACHINE LEARNING / SKIN IMAGE CLASSIFICATION"
     )
 
+
     st.title(
         "DermaSense AI"
     )
+
 
     st.write(
         """
@@ -3643,10 +2907,6 @@ if page == "Analyze":
             )
 
 
-    # =====================================================
-    # IMAGE ACQUISITION
-    # =====================================================
-
     st.markdown(
         "## Image Acquisition"
     )
@@ -3666,7 +2926,7 @@ if page == "Analyze":
 
 
     # =====================================================
-    # UPLOAD
+    # UPLOAD MODE
     # =====================================================
 
     if input_mode == "Upload Images":
@@ -3721,10 +2981,6 @@ if page == "Analyze":
                     )
 
 
-                    # -----------------------------------------
-                    # ONLY ONE PREVIEW
-                    # -----------------------------------------
-
                     with preview_columns[
                         index
                         %
@@ -3749,7 +3005,7 @@ if page == "Analyze":
 
 
     # =====================================================
-    # CAMERA
+    # CAMERA MODE
     # =====================================================
 
     else:
@@ -3815,7 +3071,7 @@ if page == "Analyze":
 
 
     # =====================================================
-    # SMALL ANALYZE BUTTON
+    # ANALYZE BUTTON
     # =====================================================
 
     if (
@@ -3826,7 +3082,9 @@ if page == "Analyze":
 
         if len(valid_images) == 1:
 
-            button_text = "Analyze"
+            button_text = (
+                "Analyze"
+            )
 
         else:
 
@@ -3853,7 +3111,7 @@ if page == "Analyze":
 
 
         # =================================================
-        # PROCESS
+        # PROCESS IMAGE
         # =================================================
 
         if analyze_clicked:
@@ -3862,14 +3120,6 @@ if page == "Analyze":
 
 
             for filename, image in valid_images:
-
-                # -----------------------------------------
-                # ONE PLACEHOLDER CONTAINS:
-                # - Neural Inference heading
-                # - processing animation
-                #
-                # BOTH disappear together afterward.
-                # -----------------------------------------
 
                 processing_placeholder = st.empty()
 
@@ -3887,10 +3137,6 @@ if page == "Analyze":
                     )
 
 
-                # -----------------------------------------
-                # REAL ML PREDICTION
-                # -----------------------------------------
-
                 result = predict_lesion(
                     model,
                     image,
@@ -3898,16 +3144,10 @@ if page == "Analyze":
                 )
 
 
-                # Keep animation visible for presentation
-
                 time.sleep(
                     PROCESSING_SECONDS
                 )
 
-
-                # -----------------------------------------
-                # REMOVES HEADING + ANIMATION
-                # -----------------------------------------
 
                 processing_placeholder.empty()
 
@@ -3960,16 +3200,18 @@ if page == "Analyze":
 
 
                 # =============================================
-                # STORE LATEST RESULT
+                # STORE LATEST ANALYSIS
                 # =============================================
 
                 st.session_state.latest_prediction = (
                     prediction
                 )
 
+
                 st.session_state.latest_probabilities = (
                     probabilities
                 )
+
 
                 st.session_state.latest_filename = (
                     filename
@@ -3991,16 +3233,11 @@ if page == "Analyze":
                     )
 
 
-                # =================================================
+                # =============================================
                 # OTHER
-                # =================================================
+                # =============================================
 
                 if prediction == "Other":
-
-                    # No structural visualization
-                    # No nerves
-                    # No Grad-CAM
-                    # No response percentages
 
                     st.markdown(
                         "## Classification Output"
@@ -4022,15 +3259,11 @@ if page == "Analyze":
                     )
 
 
-                # =================================================
-                # BENIGN / MELANOMA
-                # =================================================
+                # =============================================
+                # SUPPORTED RESULTS
+                # =============================================
 
                 else:
-
-                    # =============================================
-                    # STRUCTURAL VISUALIZATION
-                    # =============================================
 
                     st.markdown(
                         "## Structural Visualization"
@@ -4042,13 +3275,6 @@ if page == "Analyze":
                         prediction=prediction,
                     )
 
-
-                    # No extra text below 3D model
-
-
-                    # =============================================
-                    # MODEL ATTENTION
-                    # =============================================
 
                     st.markdown(
                         "## Model Attention Analysis"
@@ -4076,17 +3302,23 @@ if page == "Analyze":
 
                     if prediction == "Benign-like":
 
-                        target_class = "benign"
+                        target_class = (
+                            "benign"
+                        )
 
                     else:
 
-                        target_class = "melanoma"
+                        target_class = (
+                            "melanoma"
+                        )
 
 
                     try:
 
-                        class_index = class_names.index(
-                            target_class
+                        class_index = (
+                            class_names.index(
+                                target_class
+                            )
                         )
 
 
@@ -4124,6 +3356,7 @@ if page == "Analyze":
                                 "INPUT IMAGE"
                             )
 
+
                             st.image(
                                 image,
                                 width=255,
@@ -4135,6 +3368,7 @@ if page == "Analyze":
                             st.caption(
                                 "GRAD-CAM RESPONSE"
                             )
+
 
                             st.image(
                                 gradcam_result[
@@ -4162,10 +3396,6 @@ if page == "Analyze":
                             """
                         )
 
-
-                    # =============================================
-                    # CLASSIFICATION LAST
-                    # =============================================
 
                     st.markdown(
                         "## Classification Output"
@@ -4195,8 +3425,10 @@ if page == "Analyze":
 
                 st.success(
                     """
-                    Open **DermaGuide AI** for an educational
-                    explanation of the latest model result.
+                    Open **DermaGuide AI** to ask questions about
+                    this result, skin diseases, health conditions,
+                    prevention, treatment information, or the
+                    DermaSense technology.
                     """
                 )
 
@@ -4381,11 +3613,15 @@ elif page == "DermaGuide AI":
 
     st.caption(
         """
-        Educational assistant for explaining DermaSense,
-        its machine-learning workflow, and the latest result.
+        Intelligent educational assistant powered by an LLM.
+        Ask naturally — you are not limited to the quick-query buttons.
         """
     )
 
+
+    # =====================================================
+    # CHECK ACTIVE RESULT
+    # =====================================================
 
     has_prediction = (
         st.session_state.latest_prediction
@@ -4393,19 +3629,17 @@ elif page == "DermaGuide AI":
     )
 
 
-    # =====================================================
-    # RESULT CONTEXT
-    # =====================================================
-
     if has_prediction:
 
         prediction = (
             st.session_state.latest_prediction
         )
 
+
         probabilities = (
             st.session_state.latest_probabilities
         )
+
 
         filename = (
             st.session_state.latest_filename
@@ -4418,8 +3652,8 @@ elif page == "DermaGuide AI":
 
             left, right = st.columns(
                 [
-                    1.6,
-                    .7,
+                    1.7,
+                    .6,
                 ]
             )
 
@@ -4427,23 +3661,27 @@ elif page == "DermaGuide AI":
             with left:
 
                 st.caption(
-                    "LATEST CLASSIFICATION"
+                    "LATEST DERMASENSE ANALYSIS"
                 )
+
 
                 st.subheader(
                     prediction
                 )
 
-                st.caption(
-                    filename
-                )
+
+                if filename:
+
+                    st.caption(
+                        filename
+                    )
 
 
             with right:
 
                 st.markdown(
                     '<div class="derma-result-chip">'
-                    'CONTEXT ACTIVE'
+                    'RESULT CONTEXT ACTIVE'
                     '</div>',
                     unsafe_allow_html=True,
                 )
@@ -4456,11 +3694,15 @@ elif page == "DermaGuide AI":
         probabilities = {}
 
 
-        st.info(
-            """
-            General assistant mode is active.
-            Analyze an image to enable result-aware explanations.
-            """
+        st.markdown(
+            """<div class="dermaguide-info">
+<strong>General AI mode is active.</strong><br><br>
+You can ask DermaGuide about diseases, skin conditions,
+symptoms, causes, prevention, general treatment approaches,
+medical terminology, DermaSense AI, MobileNetV2, Grad-CAM,
+machine learning, or other educational questions.
+</div>""",
+            unsafe_allow_html=True,
         )
 
 
@@ -4474,7 +3716,9 @@ elif page == "DermaGuide AI":
 
 
     # =====================================================
-    # QUICK QUESTIONS
+    # QUICK QUERY BUTTONS
+    # These are ONLY suggestions.
+    # User may type anything in the chat box.
     # =====================================================
 
     st.markdown(
@@ -4503,12 +3747,12 @@ elif page == "DermaGuide AI":
 
 
         if q2.button(
-            "What does it mean?",
+            "Explain this result",
             use_container_width=True,
         ):
 
             quick_question = (
-                "What does this result mean?"
+                "Explain my latest DermaSense result in simple words."
             )
 
 
@@ -4518,7 +3762,7 @@ elif page == "DermaGuide AI":
         ):
 
             quick_question = (
-                "What should someone generally do next?"
+                "What is the general next step after a result like this?"
             )
 
 
@@ -4528,13 +3772,12 @@ elif page == "DermaGuide AI":
 
 
         if q4.button(
-            "Possible concerns",
+            "Disease information",
             use_container_width=True,
         ):
 
             quick_question = (
-                "What general concerns may be associated "
-                "with this type of result?"
+                "Explain the medical condition related to this result."
             )
 
 
@@ -4544,8 +3787,7 @@ elif page == "DermaGuide AI":
         ):
 
             quick_question = (
-                "What are general skin cancer "
-                "risk-reduction steps?"
+                "What are general risk-reduction and prevention measures?"
             )
 
 
@@ -4555,7 +3797,7 @@ elif page == "DermaGuide AI":
         ):
 
             quick_question = (
-                "Explain what the Grad-CAM attention map means."
+                "Explain the Grad-CAM attention map in my analysis."
             )
 
 
@@ -4567,32 +3809,32 @@ elif page == "DermaGuide AI":
 
 
         if q1.button(
-            "MobileNetV2",
+            "What is melanoma?",
             use_container_width=True,
         ):
 
             quick_question = (
-                "How does MobileNetV2 work in DermaSense?"
+                "What is melanoma? Explain it simply."
             )
 
 
         if q2.button(
-            "Benign-like",
+            "What is psoriasis?",
             use_container_width=True,
         ):
 
             quick_question = (
-                "What does Benign-like mean?"
+                "What is psoriasis, what causes it, and what are common symptoms?"
             )
 
 
         if q3.button(
-            "Melanoma",
+            "What is eczema?",
             use_container_width=True,
         ):
 
             quick_question = (
-                "What is melanoma?"
+                "Explain eczema, common symptoms, causes and general treatment."
             )
 
 
@@ -4602,12 +3844,12 @@ elif page == "DermaGuide AI":
 
 
         if q4.button(
-            "Grad-CAM",
+            "Explain Grad-CAM",
             use_container_width=True,
         ):
 
             quick_question = (
-                "What is Grad-CAM?"
+                "What is Grad-CAM and how does it work?"
             )
 
 
@@ -4617,7 +3859,7 @@ elif page == "DermaGuide AI":
         ):
 
             quick_question = (
-                "Give general skin-risk reduction information."
+                "What are general ways to protect skin health?"
             )
 
 
@@ -4627,42 +3869,65 @@ elif page == "DermaGuide AI":
         ):
 
             quick_question = (
-                "Explain the DermaSense analysis pipeline."
+                "Explain how DermaSense AI works from image upload to prediction."
             )
 
 
     # =====================================================
-    # HANDLE QUICK QUESTION
+    # HELPER TO ASK AI
+    # =====================================================
+
+    def ask_dermaguide(
+        question_text
+    ):
+
+        return dermaguide_reply(
+            question_text,
+            prediction=(
+                prediction
+                if has_prediction
+                else None
+            ),
+            probabilities=(
+                probabilities
+                if has_prediction
+                else {}
+            ),
+            history=(
+                st.session_state
+                .dermaguide_messages
+            ),
+        )
+
+
+    # =====================================================
+    # QUICK QUERY HANDLING
     # =====================================================
 
     if quick_question:
 
-        if has_prediction:
+        # Add question first
 
-            answer = dermaguide_reply(
-                quick_question,
-                prediction=prediction,
-                probabilities=probabilities,
-            )
-
-        else:
-
-            answer = general_dermaguide_reply(
-                quick_question
-            )
+        st.session_state.dermaguide_messages.append(
+            {
+                "role": "user",
+                "content": quick_question,
+            }
+        )
 
 
-        st.session_state.dermaguide_messages.extend(
-            [
-                {
-                    "role": "user",
-                    "content": quick_question,
-                },
-                {
-                    "role": "assistant",
-                    "content": answer,
-                },
-            ]
+        # AI understands the complete question
+
+        answer = ask_dermaguide(
+            quick_question
+        )
+
+
+        st.session_state.dermaguide_messages.append(
+            {
+                "role": "assistant",
+                "content": answer,
+            }
         )
 
 
@@ -4673,7 +3938,7 @@ elif page == "DermaGuide AI":
 
 
     # =====================================================
-    # INITIAL BOT MESSAGE
+    # INITIAL MESSAGE
     # =====================================================
 
     if not st.session_state.dermaguide_messages:
@@ -4686,14 +3951,24 @@ elif page == "DermaGuide AI":
 
                 st.markdown(
                     f"""
-                    **DermaGuide ready.**
+### DermaGuide AI ready
 
-                    Latest classification:
-                    **{prediction}**
+Your latest DermaSense result is **{prediction}**.
 
-                    Ask about the result, Grad-CAM,
-                    general risk information, or the
-                    DermaSense machine-learning workflow.
+You can ask me naturally about:
+
+- your latest result
+- why the model predicted it
+- melanoma or other diseases
+- symptoms and causes
+- prevention and risk factors
+- general treatment approaches
+- Grad-CAM
+- MobileNetV2
+- machine learning
+- or another educational question
+
+You are **not limited to the buttons above**.
                     """
                 )
 
@@ -4701,18 +3976,29 @@ elif page == "DermaGuide AI":
 
                 st.markdown(
                     """
-                    **DermaGuide general mode ready.**
+### DermaGuide AI ready
 
-                    Ask about MobileNetV2, transfer learning,
-                    Grad-CAM, Benign-like results,
-                    Melanoma-suspicious results, or how
-                    DermaSense processes an image.
+Ask me a question naturally.
+
+For example:
+
+- What is psoriasis?
+- What causes eczema?
+- What is diabetes?
+- Difference between melanoma and a normal mole?
+- What are symptoms of dengue?
+- How is acne generally treated?
+- What is Grad-CAM?
+- How does MobileNetV2 work?
+- Explain DermaSense AI.
+
+You are **not limited to fixed questions**.
                     """
                 )
 
 
     # =====================================================
-    # DISPLAY CHAT
+    # DISPLAY CHAT HISTORY
     # =====================================================
 
     for message in (
@@ -4733,15 +4019,17 @@ elif page == "DermaGuide AI":
 
 
     # =====================================================
-    # CHAT INPUT
+    # FREE-TEXT CHAT INPUT
     # =====================================================
 
     question = st.chat_input(
-        "Ask DermaGuide..."
+        "Ask DermaGuide anything..."
     )
 
 
     if question:
+
+        # Add user question
 
         st.session_state.dermaguide_messages.append(
             {
@@ -4751,20 +4039,15 @@ elif page == "DermaGuide AI":
         )
 
 
-        if has_prediction:
+        # EVERY question goes to the LLM.
+        # No keyword matching or fixed answer fallback here.
 
-            answer = dermaguide_reply(
-                question,
-                prediction=prediction,
-                probabilities=probabilities,
-            )
+        answer = ask_dermaguide(
+            question
+        )
 
-        else:
 
-            answer = general_dermaguide_reply(
-                question
-            )
-
+        # Add AI response
 
         st.session_state.dermaguide_messages.append(
             {
@@ -4775,6 +4058,9 @@ elif page == "DermaGuide AI":
 
 
         st.rerun()
+
+
+    st.write("")
 
 
     if st.button(
