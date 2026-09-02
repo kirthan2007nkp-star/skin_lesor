@@ -28,9 +28,7 @@ from dermaguide import dermaguide_reply
 # =========================================================
 
 APP_TITLE = "DermaSense AI"
-
 DB_PATH = Path("data") / "analysis_history.db"
-
 PROCESSING_SECONDS = 5.2
 
 
@@ -55,12 +53,18 @@ if "latest_probabilities" not in st.session_state:
 if "latest_filename" not in st.session_state:
     st.session_state.latest_filename = None
 
-if "dermaguide_messages" not in st.session_state:
-    st.session_state.dermaguide_messages = []
+if "analysis_results" not in st.session_state:
+    st.session_state.analysis_results = []
+
+if "result_explanations" not in st.session_state:
+    st.session_state.result_explanations = {}
+
+if "inline_dermaguide_messages" not in st.session_state:
+    st.session_state.inline_dermaguide_messages = []
 
 
 # =========================================================
-# TECHNICAL THEME
+# TECHNICAL UI THEME
 # =========================================================
 
 st.markdown(
@@ -529,46 +533,68 @@ div.stButton > button:hover {
 
 
 /* ======================================================
-   DERMAGUIDE
+   AI EXPLANATION CARD
    ====================================================== */
 
-.derma-result-chip {
-    display: inline-block;
-
-    padding: 7px 12px;
-
-    border:
-        1px solid rgba(64,222,255,.30);
-
-    border-radius: 15px;
-
-    color: #5eeaff;
-
-    background:
-        rgba(23,92,119,.18);
-
-    font-size: 12px;
-
-    font-weight: 700;
-}
-
-
-.dermaguide-info {
+.explanation-header {
     padding: 14px 16px;
-
-    background:
-        rgba(7, 39, 57, .72);
-
-    border:
-        1px solid rgba(56, 196, 219, .17);
 
     border-radius: 12px;
 
-    color: #98b6c5;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(7,47,67,.85),
+            rgba(8,31,53,.85)
+        );
 
-    line-height: 1.55;
+    border:
+        1px solid rgba(72,204,230,.20);
 
-    font-size: 13px;
+    margin-bottom: 14px;
+}
+
+
+.explanation-title {
+    color: #dff8ff;
+
+    font-size: 15px;
+
+    font-weight: 750;
+}
+
+
+.explanation-subtitle {
+    color: #7293a4;
+
+    font-size: 10px;
+
+    margin-top: 3px;
+}
+
+
+/* ======================================================
+   CHAT
+   ====================================================== */
+
+.chat-info {
+    padding: 13px 15px;
+
+    border-radius: 11px;
+
+    background:
+        rgba(5, 31, 48, .75);
+
+    border:
+        1px solid rgba(65, 194, 219, .16);
+
+    color: #8eafbd;
+
+    font-size: 12px;
+
+    line-height: 1.5;
+
+    margin-bottom: 10px;
 }
 
 </style>
@@ -578,7 +604,7 @@ div.stButton > button:hover {
 
 
 # =========================================================
-# IMAGE → BASE64
+# IMAGE TO BASE64
 # =========================================================
 
 def image_to_base64(image):
@@ -619,10 +645,11 @@ def render_processing_animation(
         str(filename)
     )
 
-
     processing_html = """
 <!DOCTYPE html>
+
 <html>
+
 <head>
 
 <style>
@@ -631,14 +658,12 @@ def render_processing_animation(
     box-sizing: border-box;
 }
 
-
 body {
     margin: 0;
     overflow: hidden;
     background: transparent;
     font-family: Arial, sans-serif;
 }
-
 
 .root {
     width: 100%;
@@ -649,12 +674,12 @@ body {
     justify-content: center;
 }
 
-
 .processor {
     position: relative;
 
     width: 790px;
     max-width: 96%;
+
     height: 320px;
 
     overflow: hidden;
@@ -692,7 +717,6 @@ body {
         1px solid rgba(58,201,228,.25);
 }
 
-
 .header {
     height: 54px;
 
@@ -704,7 +728,6 @@ body {
     border-bottom:
         1px solid rgba(87,151,181,.12);
 }
-
 
 .live-dot {
     width: 8px;
@@ -723,7 +746,6 @@ body {
         pulse 1s infinite;
 }
 
-
 .title {
     color: #eaf5fa;
 
@@ -731,7 +753,6 @@ body {
 
     font-weight: 750;
 }
-
 
 .status {
     margin-left: auto;
@@ -743,7 +764,6 @@ body {
     letter-spacing: 1.2px;
 }
 
-
 .image-zone {
     position: absolute;
 
@@ -754,12 +774,12 @@ body {
     height: 210px;
 
     display: flex;
+
     align-items: center;
     justify-content: center;
 
     perspective: 950px;
 }
-
 
 .stack {
     position: relative;
@@ -775,7 +795,6 @@ body {
         ease-in-out
         forwards;
 }
-
 
 .image-face {
     position: absolute;
@@ -797,14 +816,12 @@ body {
         1px solid rgba(64,226,247,.46);
 }
 
-
 .image-face img {
     width: 100%;
     height: 100%;
 
     object-fit: cover;
 }
-
 
 .grid {
     position: absolute;
@@ -833,7 +850,6 @@ body {
         linear
         forwards;
 }
-
 
 .scan {
     position: absolute;
@@ -865,7 +881,6 @@ body {
         alternate;
 }
 
-
 .filename {
     position: absolute;
 
@@ -885,7 +900,6 @@ body {
 
     white-space: nowrap;
 }
-
 
 .pipeline {
     position: absolute;
@@ -907,7 +921,6 @@ body {
         1px solid rgba(76,145,175,.13);
 }
 
-
 .pipeline-title {
     color: #dcebf3;
 
@@ -917,7 +930,6 @@ body {
 
     margin-bottom: 9px;
 }
-
 
 .step {
     height: 29px;
@@ -942,7 +954,6 @@ body {
     font-size: 8px;
 }
 
-
 .step-number {
     width: 19px;
     height: 19px;
@@ -950,6 +961,7 @@ body {
     margin-right: 8px;
 
     display: flex;
+
     align-items: center;
     justify-content: center;
 
@@ -961,7 +973,6 @@ body {
         1px solid rgba(68,214,237,.22);
 }
 
-
 .check {
     margin-left: auto;
 
@@ -969,7 +980,6 @@ body {
 
     opacity: 0;
 }
-
 
 .s1 .check {
     animation: done1 5.2s linear forwards;
@@ -991,7 +1001,6 @@ body {
     animation: done5 5.2s linear forwards;
 }
 
-
 .progress {
     height: 5px;
 
@@ -1003,7 +1012,6 @@ body {
 
     background: #0e293c;
 }
-
 
 .progress-value {
     width: 0;
@@ -1024,7 +1032,6 @@ body {
         forwards;
 }
 
-
 @keyframes pulse {
 
     0%,
@@ -1038,7 +1045,6 @@ body {
         transform: scale(1.25);
     }
 }
-
 
 @keyframes modelMove {
 
@@ -1067,7 +1073,6 @@ body {
     }
 }
 
-
 @keyframes scanMove {
 
     from {
@@ -1078,7 +1083,6 @@ body {
         top: 138px;
     }
 }
-
 
 @keyframes gridShow {
 
@@ -1097,7 +1101,6 @@ body {
     }
 }
 
-
 @keyframes progress {
 
     0% { width: 2%; }
@@ -1108,38 +1111,38 @@ body {
     100% { width: 100%; }
 }
 
-
 @keyframes done1 {
 
     0%,19% { opacity: 0; }
+
     20%,100% { opacity: 1; }
 }
-
 
 @keyframes done2 {
 
     0%,39% { opacity: 0; }
+
     40%,100% { opacity: 1; }
 }
-
 
 @keyframes done3 {
 
     0%,59% { opacity: 0; }
+
     60%,100% { opacity: 1; }
 }
-
 
 @keyframes done4 {
 
     0%,79% { opacity: 0; }
+
     80%,100% { opacity: 1; }
 }
-
 
 @keyframes done5 {
 
     0%,96% { opacity: 0; }
+
     97%,100% { opacity: 1; }
 }
 
@@ -1290,18 +1293,15 @@ Classification output generated
 </html>
     """
 
-
     processing_html = processing_html.replace(
         "__IMAGE__",
         image_data,
     )
 
-
     processing_html = processing_html.replace(
         "__FILENAME__",
         safe_filename,
     )
-
 
     components.html(
         processing_html,
@@ -1323,16 +1323,17 @@ def render_connected_3d_skin(
         image
     )
 
-
     if prediction == "Benign-like":
+
         accent = "#43dfc0"
 
     else:
-        accent = "#ff6d99"
 
+        accent = "#ff6d99"
 
     visual_html = """
 <!DOCTYPE html>
+
 <html>
 
 <head>
@@ -1342,7 +1343,6 @@ def render_connected_3d_skin(
 * {
     box-sizing: border-box;
 }
-
 
 body {
     margin: 0;
@@ -1356,7 +1356,6 @@ body {
         sans-serif;
 }
 
-
 .root {
     width: 100%;
     height: 500px;
@@ -1366,7 +1365,6 @@ body {
     justify-content: center;
     align-items: center;
 }
-
 
 .card {
     position: relative;
@@ -1411,7 +1409,6 @@ body {
         1px solid rgba(58,199,225,.22);
 }
 
-
 .header {
     height: 58px;
 
@@ -1424,7 +1421,6 @@ body {
     border-bottom:
         1px solid rgba(88,153,181,.11);
 }
-
 
 .header-icon {
     width: 30px;
@@ -1448,7 +1444,6 @@ body {
         1px solid rgba(75,219,244,.20);
 }
 
-
 .header-title {
     color: #e7f2f8;
 
@@ -1456,7 +1451,6 @@ body {
 
     font-weight: 750;
 }
-
 
 .header-sub {
     color: #5e7e91;
@@ -1466,12 +1460,10 @@ body {
     margin-top: 2px;
 }
 
-
 .status {
     margin-left: auto;
 
     display: flex;
-
     align-items: center;
 
     gap: 6px;
@@ -1491,7 +1483,6 @@ body {
         1px solid rgba(72,223,170,.17);
 }
 
-
 .status-dot {
     width: 6px;
     height: 6px;
@@ -1500,7 +1491,6 @@ body {
 
     background: #4cf0b9;
 }
-
 
 .scene-panel {
     position: absolute;
@@ -1526,7 +1516,6 @@ body {
         1px solid rgba(73,147,177,.11);
 }
 
-
 .scene-title {
     position: absolute;
 
@@ -1540,7 +1529,6 @@ body {
     font-weight: 700;
 }
 
-
 .scene-subtitle {
     position: absolute;
 
@@ -1551,7 +1539,6 @@ body {
 
     font-size: 6px;
 }
-
 
 .scene {
     position: absolute;
@@ -1569,7 +1556,6 @@ body {
 
     perspective: 1150px;
 }
-
 
 .skin-model {
     position: relative;
@@ -1591,7 +1577,6 @@ body {
         ease-in-out
         forwards;
 }
-
 
 .surface {
     position: absolute;
@@ -1620,14 +1605,12 @@ body {
         forwards;
 }
 
-
 .surface img {
     width: 100%;
     height: 100%;
 
     object-fit: cover;
 }
-
 
 .analysis-line {
     position: absolute;
@@ -1660,7 +1643,6 @@ body {
         forwards;
 }
 
-
 .epidermis {
     position: absolute;
 
@@ -1686,7 +1668,6 @@ body {
         ease-in-out
         forwards;
 }
-
 
 .dermis {
     position: absolute;
@@ -1715,7 +1696,6 @@ body {
         ease-in-out
         forwards;
 }
-
 
 .subcutaneous {
     position: absolute;
@@ -1753,7 +1733,6 @@ body {
         forwards;
 }
 
-
 .anatomy {
     position: absolute;
 
@@ -1763,7 +1742,6 @@ body {
     width: 100%;
     height: 70px;
 }
-
 
 .nerve {
     fill: none;
@@ -1790,7 +1768,6 @@ body {
         forwards;
 }
 
-
 .vessel-red {
     fill: none;
 
@@ -1812,7 +1789,6 @@ body {
         ease-out
         forwards;
 }
-
 
 .vessel-blue {
     fill: none;
@@ -1836,7 +1812,6 @@ body {
         forwards;
 }
 
-
 .info-panel {
     position: absolute;
 
@@ -1858,7 +1833,6 @@ body {
         1px solid rgba(73,147,177,.11);
 }
 
-
 .info-title {
     color:
         #dceaf2;
@@ -1872,7 +1846,6 @@ body {
     margin-bottom:
         12px;
 }
-
 
 .info-row {
     display: flex;
@@ -1894,7 +1867,6 @@ body {
         1px solid rgba(73,136,163,.09);
 }
 
-
 .code {
     width: 29px;
     height: 29px;
@@ -1914,7 +1886,6 @@ body {
         rgba(30,103,128,.17);
 }
 
-
 .info-name {
     color:
         #cbdde6;
@@ -1926,7 +1897,6 @@ body {
         700;
 }
 
-
 .info-desc {
     color:
         #5e7d90;
@@ -1934,7 +1904,6 @@ body {
     font-size:
         5.5px;
 }
-
 
 @keyframes wholeModel {
 
@@ -1963,7 +1932,6 @@ body {
     }
 }
 
-
 @keyframes surfaceMotion {
 
     0%,
@@ -1984,7 +1952,6 @@ body {
             translateZ(55px);
     }
 }
-
 
 @keyframes epidermisMotion {
 
@@ -2007,7 +1974,6 @@ body {
     }
 }
 
-
 @keyframes dermisMotion {
 
     0%,
@@ -2029,7 +1995,6 @@ body {
     }
 }
 
-
 @keyframes subcutaneousMotion {
 
     0%,
@@ -2050,7 +2015,6 @@ body {
             translateZ(17px);
     }
 }
-
 
 @keyframes surfaceScan {
 
@@ -2075,7 +2039,6 @@ body {
     }
 }
 
-
 @keyframes nerveDraw {
 
     0%,
@@ -2090,7 +2053,6 @@ body {
             0;
     }
 }
-
 
 @keyframes vesselDraw {
 
@@ -2111,9 +2073,7 @@ body {
 
 </head>
 
-
 <body>
-
 
 <div class="root">
 
@@ -2389,18 +2349,15 @@ Illustrative lower tissue
 </html>
     """
 
-
     visual_html = visual_html.replace(
         "__IMAGE__",
         image_data,
     )
 
-
     visual_html = visual_html.replace(
         "__ACCENT__",
         accent,
     )
-
 
     components.html(
         visual_html,
@@ -2425,7 +2382,6 @@ def render_final_prediction(
         )
     )
 
-
     melanoma = float(
         probabilities.get(
             "melanoma",
@@ -2433,6 +2389,10 @@ def render_final_prediction(
         )
     )
 
+
+    # =====================================================
+    # OTHER
+    # =====================================================
 
     if prediction == "Other":
 
@@ -2452,6 +2412,10 @@ Other / rejection category.
         return
 
 
+    # =====================================================
+    # BENIGN
+    # =====================================================
+
     if prediction == "Benign-like":
 
         result_class = (
@@ -2462,6 +2426,10 @@ Other / rejection category.
             "The Benign-like neural response was stronger "
             "than the melanoma response."
         )
+
+    # =====================================================
+    # MELANOMA
+    # =====================================================
 
     else:
 
@@ -2479,7 +2447,6 @@ Other / rejection category.
     safe_prediction = html.escape(
         prediction
     )
-
 
     safe_description = html.escape(
         description
@@ -2525,6 +2492,94 @@ Other / rejection category.
             "Melanoma Response",
             f"{melanoma * 100:.1f}%",
         )
+
+
+# =========================================================
+# AI RESULT EXPLANATION
+# =========================================================
+
+def generate_result_explanation(
+    prediction,
+    probabilities,
+):
+
+    prompt = f"""
+The latest DermaSense machine-learning classification is:
+
+{prediction}
+
+Create a clear educational explanation of this result.
+
+Use exactly these sections:
+
+### Why this prediction?
+
+Explain why the MobileNetV2 image classifier may have produced
+this classification based on learned image patterns.
+
+Do not claim that the AI directly sees cancer or knows the
+actual medical diagnosis.
+
+If useful, mention that Grad-CAM shows regions that influenced
+the neural-network response.
+
+### Possible Causes / Risk Factors
+
+If the classification is Melanoma-suspicious, explain general
+known melanoma risk factors.
+
+Do NOT say those factors caused this person's lesion.
+
+If the result is Benign-like, explain that this classification
+does not identify the cause of a lesion and mention that benign
+skin findings can have many different causes.
+
+If the result is Other, clearly explain that no specific disease
+or cause can be identified from the Other classification.
+
+### Possible Effects / Concerns
+
+Explain the general concerns associated with the relevant
+condition.
+
+If the result is Benign-like or Other, do not invent a disease.
+
+### General Treatment / Management
+
+Explain general medical approaches that may be considered only
+if an actual condition is professionally diagnosed.
+
+Do not prescribe medication.
+Do not give medication doses.
+Do not promise a cure.
+Do not tell the user to perform procedures themselves.
+
+### What Should Someone Generally Do Next?
+
+Give safe general next-step information.
+
+For Melanoma-suspicious, explain that professional dermatology
+assessment is appropriate because the ML result does not confirm
+melanoma.
+
+For Benign-like, explain that changing, unusual, persistent,
+or concerning lesions can still be professionally evaluated.
+
+For Other, explain that the classifier cannot determine what
+the image represents.
+
+End with one short sentence saying that DermaSense is an
+educational ML prototype and not a medical diagnosis.
+
+Keep the response concise and easy to understand.
+"""
+
+    return dermaguide_reply(
+        prompt,
+        prediction=prediction,
+        probabilities=probabilities,
+        history=[],
+    )
 
 
 # =========================================================
@@ -2597,7 +2652,6 @@ def add_history(
                     "%Y-%m-%d %H:%M:%S",
                 )
 
-
                 seconds = (
                     now
                     -
@@ -2624,6 +2678,7 @@ def add_history(
 
 
             if duplicate and seconds <= 10:
+
                 return
 
 
@@ -2745,12 +2800,15 @@ with st.sidebar:
     st.write("")
 
 
+    # =====================================================
+    # DERMAGUIDE REMOVED FROM SIDEBAR
+    # =====================================================
+
     page = st.radio(
         "Navigation",
         [
             "Analyze",
             "History",
-            "DermaGuide AI",
         ],
         label_visibility="collapsed",
     )
@@ -2788,6 +2846,10 @@ with st.sidebar:
 <div class="tech-row">
 <span class="tech-name">Storage</span>
 <span class="tech-value">SQLite</span>
+</div>
+<div class="tech-row">
+<span class="tech-name">AI Assistant</span>
+<span class="tech-value">Groq LLM</span>
 </div>
 <div class="tech-row">
 <span class="tech-name">Interface</span>
@@ -2888,7 +2950,6 @@ if page == "Analyze":
 
 
     model = None
-
     metadata = {}
 
 
@@ -2897,7 +2958,6 @@ if page == "Analyze":
         try:
 
             model = get_model()
-
             metadata = get_metadata()
 
         except Exception as exc:
@@ -2906,6 +2966,10 @@ if page == "Analyze":
                 f"Unable to load model: {exc}"
             )
 
+
+    # =====================================================
+    # IMAGE ACQUISITION
+    # =====================================================
 
     st.markdown(
         "## Image Acquisition"
@@ -3111,12 +3175,19 @@ if page == "Analyze":
 
 
         # =================================================
-        # PROCESS IMAGE
+        # NEW ANALYSIS
         # =================================================
 
         if analyze_clicked:
 
-            results = []
+            new_results = []
+
+
+            # Clear previous chatbot + explanations
+
+            st.session_state.inline_dermaguide_messages = []
+
+            st.session_state.result_explanations = {}
 
 
             for filename, image in valid_images:
@@ -3152,29 +3223,6 @@ if page == "Analyze":
                 processing_placeholder.empty()
 
 
-                results.append(
-                    (
-                        filename,
-                        image,
-                        result,
-                    )
-                )
-
-
-            # =================================================
-            # DISPLAY RESULTS
-            # =================================================
-
-            for result_number, (
-                filename,
-                image,
-                result,
-            ) in enumerate(
-                results,
-                start=1,
-            ):
-
-
                 prediction = result[
                     "prediction"
                 ]
@@ -3199,24 +3247,24 @@ if page == "Analyze":
                 ]
 
 
-                # =============================================
-                # STORE LATEST ANALYSIS
-                # =============================================
+                result_data = {
+                    "filename": filename,
+                    "image": image,
+                    "prediction": prediction,
+                    "confidence": confidence,
+                    "melanoma_score": melanoma_score,
+                    "probabilities": probabilities,
+                }
 
-                st.session_state.latest_prediction = (
-                    prediction
+
+                new_results.append(
+                    result_data
                 )
 
 
-                st.session_state.latest_probabilities = (
-                    probabilities
-                )
-
-
-                st.session_state.latest_filename = (
-                    filename
-                )
-
+                # -----------------------------------------
+                # STORE HISTORY
+                # -----------------------------------------
 
                 add_history(
                     filename,
@@ -3226,211 +3274,467 @@ if page == "Analyze":
                 )
 
 
-                if len(results) > 1:
+            # ---------------------------------------------
+            # SAVE RESULTS SO CHAT RERUN DOES NOT REMOVE THEM
+            # ---------------------------------------------
 
-                    st.markdown(
-                        f"## Image {result_number}"
-                    )
+            st.session_state.analysis_results = (
+                new_results
+            )
+
+
+            # ---------------------------------------------
+            # LATEST RESULT USED BY CHATBOT
+            # ---------------------------------------------
+
+            if new_results:
+
+                latest = new_results[-1]
+
+
+                st.session_state.latest_prediction = (
+                    latest[
+                        "prediction"
+                    ]
+                )
+
+
+                st.session_state.latest_probabilities = (
+                    latest[
+                        "probabilities"
+                    ]
+                )
+
+
+                st.session_state.latest_filename = (
+                    latest[
+                        "filename"
+                    ]
+                )
+
+
+    # =====================================================
+    # DISPLAY SAVED ANALYSIS RESULTS
+    # =====================================================
+
+    if st.session_state.analysis_results:
+
+        for result_number, result_data in enumerate(
+            st.session_state.analysis_results,
+            start=1,
+        ):
+
+            filename = result_data[
+                "filename"
+            ]
+
+
+            image = result_data[
+                "image"
+            ]
+
+
+            prediction = result_data[
+                "prediction"
+            ]
+
+
+            probabilities = result_data[
+                "probabilities"
+            ]
+
+
+            if len(
+                st.session_state.analysis_results
+            ) > 1:
+
+                st.markdown(
+                    f"## Image {result_number}"
+                )
+
+
+            # =================================================
+            # OTHER RESULT
+            # =================================================
+
+            if prediction == "Other":
+
+                # No 3D model
+                # No nerves
+                # No Grad-CAM
+                # No percentages
+
+                st.markdown(
+                    "## Classification Output"
+                )
+
+
+                render_final_prediction(
+                    prediction=prediction,
+                    probabilities=probabilities,
+                )
+
+
+            # =================================================
+            # BENIGN / MELANOMA
+            # =================================================
+
+            else:
+
+                # =============================================
+                # STRUCTURAL VISUALIZATION
+                # =============================================
+
+                st.markdown(
+                    "## Structural Visualization"
+                )
+
+
+                render_connected_3d_skin(
+                    image=image,
+                    prediction=prediction,
+                )
 
 
                 # =============================================
-                # OTHER
+                # GRAD-CAM
                 # =============================================
 
-                if prediction == "Other":
+                st.markdown(
+                    "## Model Attention Analysis"
+                )
 
-                    st.markdown(
-                        "## Classification Output"
+
+                st.caption(
+                    """
+                    Grad-CAM highlights image regions that influenced
+                    the neural-network response.
+                    """
+                )
+
+
+                class_names = metadata.get(
+                    "class_names",
+                    [
+                        "benign",
+                        "melanoma",
+                        "non_skin",
+                        "other_skin",
+                    ],
+                )
+
+
+                if prediction == "Benign-like":
+
+                    target_class = (
+                        "benign"
                     )
-
-
-                    render_final_prediction(
-                        prediction=prediction,
-                        probabilities=probabilities,
-                    )
-
-
-                    st.info(
-                        """
-                        The **Other** response was strongest.
-                        Lesion-specific structural visualization and
-                        Grad-CAM are skipped for this result.
-                        """
-                    )
-
-
-                # =============================================
-                # SUPPORTED RESULTS
-                # =============================================
 
                 else:
 
-                    st.markdown(
-                        "## Structural Visualization"
+                    target_class = (
+                        "melanoma"
                     )
 
 
-                    render_connected_3d_skin(
+                try:
+
+                    class_index = class_names.index(
+                        target_class
+                    )
+
+
+                    gradcam_result = create_gradcam_result(
+                        model=model,
                         image=image,
-                        prediction=prediction,
+                        class_index=class_index,
+                        image_size=int(
+                            metadata.get(
+                                "image_size",
+                                224,
+                            )
+                        ),
                     )
 
 
-                    st.markdown(
-                        "## Model Attention Analysis"
+                    (
+                        left_gap,
+                        original_col,
+                        attention_col,
+                        right_gap,
+                    ) = st.columns(
+                        [
+                            .42,
+                            1,
+                            1,
+                            .42,
+                        ]
                     )
+
+
+                    with original_col:
+
+                        st.caption(
+                            "INPUT IMAGE"
+                        )
+
+
+                        st.image(
+                            image,
+                            width=255,
+                        )
+
+
+                    with attention_col:
+
+                        st.caption(
+                            "GRAD-CAM RESPONSE"
+                        )
+
+
+                        st.image(
+                            gradcam_result[
+                                "overlay"
+                            ],
+                            width=255,
+                        )
 
 
                     st.caption(
                         """
-                        Grad-CAM highlights image regions that
-                        influenced the neural-network response.
+                        Model-attention visualization only.
+                        It does not diagnose or medically localize cancer.
                         """
                     )
 
 
-                    class_names = metadata.get(
-                        "class_names",
-                        [
-                            "benign",
-                            "melanoma",
-                            "non_skin",
-                            "other_skin",
-                        ],
+                except Exception:
+
+                    st.caption(
+                        """
+                        Classification completed successfully.
+                        Grad-CAM visualization is unavailable.
+                        """
                     )
 
 
-                    if prediction == "Benign-like":
+                # =============================================
+                # FINAL PREDICTION
+                # =============================================
 
-                        target_class = (
-                            "benign"
-                        )
-
-                    else:
-
-                        target_class = (
-                            "melanoma"
-                        )
+                st.markdown(
+                    "## Classification Output"
+                )
 
 
-                    try:
-
-                        class_index = (
-                            class_names.index(
-                                target_class
-                            )
-                        )
+                render_final_prediction(
+                    prediction=prediction,
+                    probabilities=probabilities,
+                )
 
 
-                        gradcam_result = create_gradcam_result(
-                            model=model,
-                            image=image,
-                            class_index=class_index,
-                            image_size=int(
-                                metadata.get(
-                                    "image_size",
-                                    224,
-                                )
-                            ),
-                        )
+                if (
+                    prediction
+                    ==
+                    "Melanoma-suspicious"
+                ):
 
-
-                        (
-                            left_gap,
-                            original_col,
-                            attention_col,
-                            right_gap,
-                        ) = st.columns(
-                            [
-                                .42,
-                                1,
-                                1,
-                                .42,
-                            ]
-                        )
-
-
-                        with original_col:
-
-                            st.caption(
-                                "INPUT IMAGE"
-                            )
-
-
-                            st.image(
-                                image,
-                                width=255,
-                            )
-
-
-                        with attention_col:
-
-                            st.caption(
-                                "GRAD-CAM RESPONSE"
-                            )
-
-
-                            st.image(
-                                gradcam_result[
-                                    "overlay"
-                                ],
-                                width=255,
-                            )
-
-
-                        st.caption(
-                            """
-                            Model-attention visualization only.
-                            It does not diagnose or medically
-                            localize cancer.
-                            """
-                        )
-
-
-                    except Exception:
-
-                        st.caption(
-                            """
-                            Classification completed successfully.
-                            Grad-CAM visualization is unavailable.
-                            """
-                        )
-
-
-                    st.markdown(
-                        "## Classification Output"
+                    st.warning(
+                        """
+                        **Melanoma-suspicious** is a machine-learning
+                        classification and does not confirm melanoma.
+                        """
                     )
 
 
-                    render_final_prediction(
+            # =================================================
+            # AI EXPLANATION
+            # =================================================
+
+            st.markdown(
+                "## AI Result Explanation"
+            )
+
+
+            st.markdown(
+                """<div class="explanation-header">
+<div class="explanation-title">
+Prediction Interpretation
+</div>
+<div class="explanation-subtitle">
+Why this result • Causes / Risk Factors • Effects • Treatment / Management • Next Step
+</div>
+</div>""",
+                unsafe_allow_html=True,
+            )
+
+
+            explanation_key = (
+                f"{filename}_{prediction}_{result_number}"
+            )
+
+
+            if (
+                explanation_key
+                not in
+                st.session_state.result_explanations
+            ):
+
+                with st.spinner(
+                    "Generating educational result explanation..."
+                ):
+
+                    explanation = generate_result_explanation(
                         prediction=prediction,
                         probabilities=probabilities,
                     )
 
 
-                    if (
-                        prediction
-                        ==
-                        "Melanoma-suspicious"
-                    ):
-
-                        st.warning(
-                            """
-                            **Melanoma-suspicious** is a
-                            machine-learning output and does not
-                            confirm melanoma.
-                            """
-                        )
+                    st.session_state.result_explanations[
+                        explanation_key
+                    ] = explanation
 
 
-                st.success(
-                    """
-                    Open **DermaGuide AI** to ask questions about
-                    this result, skin diseases, health conditions,
-                    prevention, treatment information, or the
-                    DermaSense technology.
-                    """
+            st.markdown(
+                st.session_state.result_explanations[
+                    explanation_key
+                ]
+            )
+
+
+            if (
+                result_number
+                <
+                len(
+                    st.session_state.analysis_results
                 )
+            ):
+
+                st.divider()
+
+
+        # =====================================================
+        # INLINE CHATBOT
+        # =====================================================
+
+        latest_result = (
+            st.session_state.analysis_results[
+                -1
+            ]
+        )
+
+
+        latest_prediction = latest_result[
+            "prediction"
+        ]
+
+
+        latest_probabilities = latest_result[
+            "probabilities"
+        ]
+
+
+        st.divider()
+
+
+        st.markdown(
+            "## Ask DermaGuide"
+        )
+
+
+        st.markdown(
+            """<div class="chat-info">
+Ask for more information about the prediction, diseases,
+symptoms, causes, risk factors, prevention, general treatment
+approaches, Grad-CAM, or another health-related question.
+The chatbot is not limited to fixed questions.
+</div>""",
+            unsafe_allow_html=True,
+        )
+
+
+        # =====================================================
+        # DISPLAY CHAT HISTORY
+        # =====================================================
+
+        for message in (
+            st.session_state.inline_dermaguide_messages
+        ):
+
+            with st.chat_message(
+                message[
+                    "role"
+                ]
+            ):
+
+                st.markdown(
+                    message[
+                        "content"
+                    ]
+                )
+
+
+        # =====================================================
+        # CHAT INPUT
+        # =====================================================
+
+        chat_question = st.chat_input(
+            "Ask anything about this result or a disease..."
+        )
+
+
+        if chat_question:
+
+            # ---------------------------------------------
+            # USER MESSAGE
+            # ---------------------------------------------
+
+            st.session_state.inline_dermaguide_messages.append(
+                {
+                    "role": "user",
+                    "content": chat_question,
+                }
+            )
+
+
+            # ---------------------------------------------
+            # AI ANSWER
+            # ---------------------------------------------
+
+            with st.spinner(
+                "DermaGuide is thinking..."
+            ):
+
+                answer = dermaguide_reply(
+                    chat_question,
+                    prediction=latest_prediction,
+                    probabilities=latest_probabilities,
+                    history=st.session_state.inline_dermaguide_messages,
+                )
+
+
+            st.session_state.inline_dermaguide_messages.append(
+                {
+                    "role": "assistant",
+                    "content": answer,
+                }
+            )
+
+
+            st.rerun()
+
+
+        if (
+            st.session_state.inline_dermaguide_messages
+        ):
+
+            if st.button(
+                "Clear Chat"
+            ):
+
+                st.session_state.inline_dermaguide_messages = []
+
+                st.rerun()
 
 
 # =========================================================
@@ -3598,475 +3902,3 @@ elif page == "History":
             clear_history()
 
             st.rerun()
-
-
-# =========================================================
-# DERMAGUIDE AI PAGE
-# =========================================================
-
-elif page == "DermaGuide AI":
-
-    st.markdown(
-        "## DermaGuide AI"
-    )
-
-
-    st.caption(
-        """
-        Intelligent educational assistant powered by an LLM.
-        Ask naturally — you are not limited to the quick-query buttons.
-        """
-    )
-
-
-    # =====================================================
-    # CHECK ACTIVE RESULT
-    # =====================================================
-
-    has_prediction = (
-        st.session_state.latest_prediction
-        is not None
-    )
-
-
-    if has_prediction:
-
-        prediction = (
-            st.session_state.latest_prediction
-        )
-
-
-        probabilities = (
-            st.session_state.latest_probabilities
-        )
-
-
-        filename = (
-            st.session_state.latest_filename
-        )
-
-
-        with st.container(
-            border=True
-        ):
-
-            left, right = st.columns(
-                [
-                    1.7,
-                    .6,
-                ]
-            )
-
-
-            with left:
-
-                st.caption(
-                    "LATEST DERMASENSE ANALYSIS"
-                )
-
-
-                st.subheader(
-                    prediction
-                )
-
-
-                if filename:
-
-                    st.caption(
-                        filename
-                    )
-
-
-            with right:
-
-                st.markdown(
-                    '<div class="derma-result-chip">'
-                    'RESULT CONTEXT ACTIVE'
-                    '</div>',
-                    unsafe_allow_html=True,
-                )
-
-
-    else:
-
-        prediction = None
-
-        probabilities = {}
-
-
-        st.markdown(
-            """<div class="dermaguide-info">
-<strong>General AI mode is active.</strong><br><br>
-You can ask DermaGuide about diseases, skin conditions,
-symptoms, causes, prevention, general treatment approaches,
-medical terminology, DermaSense AI, MobileNetV2, Grad-CAM,
-machine learning, or other educational questions.
-</div>""",
-            unsafe_allow_html=True,
-        )
-
-
-    st.warning(
-        """
-        DermaGuide provides educational information only.
-        It cannot diagnose a medical condition or prescribe
-        personalized treatment.
-        """
-    )
-
-
-    # =====================================================
-    # QUICK QUERY BUTTONS
-    # These are ONLY suggestions.
-    # User may type anything in the chat box.
-    # =====================================================
-
-    st.markdown(
-        "### Quick Queries"
-    )
-
-
-    quick_question = None
-
-
-    if has_prediction:
-
-        q1, q2, q3 = st.columns(
-            3
-        )
-
-
-        if q1.button(
-            "Why this result?",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "Why did DermaSense produce this prediction?"
-            )
-
-
-        if q2.button(
-            "Explain this result",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "Explain my latest DermaSense result in simple words."
-            )
-
-
-        if q3.button(
-            "What next?",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "What is the general next step after a result like this?"
-            )
-
-
-        q4, q5, q6 = st.columns(
-            3
-        )
-
-
-        if q4.button(
-            "Disease information",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "Explain the medical condition related to this result."
-            )
-
-
-        if q5.button(
-            "Risk reduction",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "What are general risk-reduction and prevention measures?"
-            )
-
-
-        if q6.button(
-            "Explain Grad-CAM",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "Explain the Grad-CAM attention map in my analysis."
-            )
-
-
-    else:
-
-        q1, q2, q3 = st.columns(
-            3
-        )
-
-
-        if q1.button(
-            "What is melanoma?",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "What is melanoma? Explain it simply."
-            )
-
-
-        if q2.button(
-            "What is psoriasis?",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "What is psoriasis, what causes it, and what are common symptoms?"
-            )
-
-
-        if q3.button(
-            "What is eczema?",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "Explain eczema, common symptoms, causes and general treatment."
-            )
-
-
-        q4, q5, q6 = st.columns(
-            3
-        )
-
-
-        if q4.button(
-            "Explain Grad-CAM",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "What is Grad-CAM and how does it work?"
-            )
-
-
-        if q5.button(
-            "Skin protection",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "What are general ways to protect skin health?"
-            )
-
-
-        if q6.button(
-            "How DermaSense works",
-            use_container_width=True,
-        ):
-
-            quick_question = (
-                "Explain how DermaSense AI works from image upload to prediction."
-            )
-
-
-    # =====================================================
-    # HELPER TO ASK AI
-    # =====================================================
-
-    def ask_dermaguide(
-        question_text
-    ):
-
-        return dermaguide_reply(
-            question_text,
-            prediction=(
-                prediction
-                if has_prediction
-                else None
-            ),
-            probabilities=(
-                probabilities
-                if has_prediction
-                else {}
-            ),
-            history=(
-                st.session_state
-                .dermaguide_messages
-            ),
-        )
-
-
-    # =====================================================
-    # QUICK QUERY HANDLING
-    # =====================================================
-
-    if quick_question:
-
-        # Add question first
-
-        st.session_state.dermaguide_messages.append(
-            {
-                "role": "user",
-                "content": quick_question,
-            }
-        )
-
-
-        # AI understands the complete question
-
-        answer = ask_dermaguide(
-            quick_question
-        )
-
-
-        st.session_state.dermaguide_messages.append(
-            {
-                "role": "assistant",
-                "content": answer,
-            }
-        )
-
-
-        st.rerun()
-
-
-    st.divider()
-
-
-    # =====================================================
-    # INITIAL MESSAGE
-    # =====================================================
-
-    if not st.session_state.dermaguide_messages:
-
-        with st.chat_message(
-            "assistant"
-        ):
-
-            if has_prediction:
-
-                st.markdown(
-                    f"""
-### DermaGuide AI ready
-
-Your latest DermaSense result is **{prediction}**.
-
-You can ask me naturally about:
-
-- your latest result
-- why the model predicted it
-- melanoma or other diseases
-- symptoms and causes
-- prevention and risk factors
-- general treatment approaches
-- Grad-CAM
-- MobileNetV2
-- machine learning
-- or another educational question
-
-You are **not limited to the buttons above**.
-                    """
-                )
-
-            else:
-
-                st.markdown(
-                    """
-### DermaGuide AI ready
-
-Ask me a question naturally.
-
-For example:
-
-- What is psoriasis?
-- What causes eczema?
-- What is diabetes?
-- Difference between melanoma and a normal mole?
-- What are symptoms of dengue?
-- How is acne generally treated?
-- What is Grad-CAM?
-- How does MobileNetV2 work?
-- Explain DermaSense AI.
-
-You are **not limited to fixed questions**.
-                    """
-                )
-
-
-    # =====================================================
-    # DISPLAY CHAT HISTORY
-    # =====================================================
-
-    for message in (
-        st.session_state.dermaguide_messages
-    ):
-
-        with st.chat_message(
-            message[
-                "role"
-            ]
-        ):
-
-            st.markdown(
-                message[
-                    "content"
-                ]
-            )
-
-
-    # =====================================================
-    # FREE-TEXT CHAT INPUT
-    # =====================================================
-
-    question = st.chat_input(
-        "Ask DermaGuide anything..."
-    )
-
-
-    if question:
-
-        # Add user question
-
-        st.session_state.dermaguide_messages.append(
-            {
-                "role": "user",
-                "content": question,
-            }
-        )
-
-
-        # EVERY question goes to the LLM.
-        # No keyword matching or fixed answer fallback here.
-
-        answer = ask_dermaguide(
-            question
-        )
-
-
-        # Add AI response
-
-        st.session_state.dermaguide_messages.append(
-            {
-                "role": "assistant",
-                "content": answer,
-            }
-        )
-
-
-        st.rerun()
-
-
-    st.write("")
-
-
-    if st.button(
-        "Clear DermaGuide Chat"
-    ):
-
-        st.session_state.dermaguide_messages = []
-
-        st.rerun()
