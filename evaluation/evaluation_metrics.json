@@ -1,0 +1,28 @@
+{
+  "accuracy": 0.81375,
+  "macro_precision": 0.788082905115082,
+  "macro_recall": 0.7867017103524706,
+  "macro_f1": 0.7850861646561634,
+  "classes": [
+    "Benign-like",
+    "Melanoma-suspicious",
+    "Other"
+  ],
+  "confusion_matrix": [
+    [
+      138,
+      39,
+      13
+    ],
+    [
+      25,
+      145,
+      23
+    ],
+    [
+      7,
+      42,
+      368
+    ]
+  ]
+}

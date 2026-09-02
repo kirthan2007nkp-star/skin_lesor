@@ -5,3 +5,5 @@ dataset/melanoma/
 dataset/other/
 dataset/non_skin/
 dataset_v2/
+__pycache__/
+data/analysis_history.db
