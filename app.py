@@ -2,6 +2,7 @@ from pathlib import Path
 import base64
 import html
 import io
+import re
 import sqlite3
 import time
 from datetime import datetime
@@ -9,6 +10,20 @@ from datetime import datetime
 import pandas as pd
 from PIL import Image, UnidentifiedImageError
 import streamlit as st
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    Image as RLImage,
+    KeepTogether,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 import streamlit.components.v1 as components
 
 from utils import (
@@ -197,7 +212,8 @@ div[data-baseweb="select"]>div,
 }
 
 /* BUTTONS */
-div.stButton>button{
+div.stButton>button,
+div.stDownloadButton>button{
   min-height:40px;
   border-radius:10px;
   border:1px solid rgba(167,139,250,.20);
@@ -207,7 +223,8 @@ div.stButton>button{
   box-shadow:0 8px 22px rgba(139,92,246,.18);
 }
 
-div.stButton>button:hover{
+div.stButton>button:hover,
+div.stDownloadButton>button:hover{
   color:white!important;
   border-color:#A78BFA;
   box-shadow:0 10px 26px rgba(139,92,246,.22);
@@ -1390,8 +1407,10 @@ def render_gradcam(model, metadata, image, prediction):
             "The highlighted regions indicate areas that influenced the neural-network output more strongly. "
             "Grad-CAM visualizes **model attention**; it does not identify the exact location of cancer or provide a diagnosis."
         )
+        return result.get("overlay")
     except Exception:
         st.info("Grad-CAM visualization is unavailable for this analysis.")
+        return None
 
 
 def generate_result_explanation(prediction, probabilities):
@@ -1424,6 +1443,346 @@ Do not prescribe medication or doses. End by saying that DermaSense is an educat
             "A concerning or changing skin lesion should be assessed by a qualified healthcare professional.\n\n"
             "DermaSense is an educational decision-support prototype, not a medical diagnosis system."
         )
+
+# =========================================================
+# PDF REPORT
+# =========================================================
+def _safe_report_filename(filename: str) -> str:
+    stem = Path(str(filename)).stem
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "_", stem).strip("_")
+    return safe or "dermasense_analysis"
+
+
+def _image_for_pdf(image, max_width_mm=70, max_height_mm=58):
+    if not isinstance(image, Image.Image):
+        image = Image.fromarray(image)
+    img = image.convert("RGB")
+
+    image_buffer = io.BytesIO()
+    img.save(image_buffer, format="JPEG", quality=94)
+    image_buffer.seek(0)
+
+    width_px, height_px = img.size
+    max_w = max_width_mm * mm
+    max_h = max_height_mm * mm
+    scale = min(max_w / max(width_px, 1), max_h / max(height_px, 1))
+    width = max(1, width_px * scale)
+    height = max(1, height_px * scale)
+    return RLImage(image_buffer, width=width, height=height)
+
+
+def _explanation_flowables(explanation: str, styles):
+    items = []
+    body = ParagraphStyle(
+        "ReportBody",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=9.2,
+        leading=13,
+        textColor=colors.HexColor("#303548"),
+        spaceAfter=5,
+    )
+    subhead = ParagraphStyle(
+        "ReportSubhead",
+        parent=styles["Heading3"],
+        fontName="Helvetica-Bold",
+        fontSize=10.5,
+        leading=13,
+        textColor=colors.HexColor("#6D3FDB"),
+        spaceBefore=5,
+        spaceAfter=3,
+    )
+
+    for raw_line in str(explanation or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("### "):
+            items.append(Paragraph(html.escape(line[4:]), subhead))
+        else:
+            clean = line.replace("**", "")
+            items.append(Paragraph(html.escape(clean), body))
+    return items
+
+
+def build_pdf_report(
+    filename,
+    image,
+    prediction,
+    confidence,
+    probabilities,
+    inference_time,
+    explanation,
+    gradcam_overlay=None,
+):
+    pdf_buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        pdf_buffer,
+        pagesize=A4,
+        rightMargin=14 * mm,
+        leftMargin=14 * mm,
+        topMargin=13 * mm,
+        bottomMargin=20 * mm,
+        title="DermaSense AI Analysis Report",
+        author="DermaSense AI",
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "DSReportTitle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=20,
+        leading=24,
+        textColor=colors.HexColor("#281D4F"),
+        alignment=TA_CENTER,
+        spaceAfter=3,
+    )
+    subtitle_style = ParagraphStyle(
+        "DSReportSubtitle",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=8.6,
+        leading=11,
+        textColor=colors.HexColor("#74798B"),
+        alignment=TA_CENTER,
+        spaceAfter=10,
+    )
+    section_style = ParagraphStyle(
+        "DSReportSection",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=12.5,
+        leading=15,
+        textColor=colors.HexColor("#5B36C9"),
+        spaceBefore=8,
+        spaceAfter=6,
+    )
+    small_style = ParagraphStyle(
+        "DSReportSmall",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=8,
+        leading=10.5,
+        textColor=colors.HexColor("#646A7B"),
+    )
+
+
+    story = [
+        Paragraph("DermaSense AI - Analysis Report", title_style),
+        Paragraph(
+            "Explainable and confidence-aware AI skin-image screening prototype",
+            subtitle_style,
+        ),
+    ]
+
+    generated_at = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    summary_data = [
+        ["Report generated", generated_at],
+        ["Image file", str(filename)],
+        ["Model", "MobileNetV2 transfer learning"],
+        ["Input", "224 x 224 RGB image"],
+        ["Classification", str(prediction)],
+        ["Inference time", f"{float(inference_time):.3f} seconds"],
+    ]
+    if prediction != "Other":
+        summary_data.append(["Primary model response", f"{float(confidence) * 100:.2f}%"])
+
+    summary_table = Table(summary_data, colWidths=[48 * mm, 128 * mm], hAlign="CENTER")
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F1EDFF")),
+                ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#49328F")),
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+                ("TEXTCOLOR", (1, 0), (1, -1), colors.HexColor("#303548")),
+                ("FONTSIZE", (0, 0), (-1, -1), 8.7),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D7CFF3")),
+                ("ROWBACKGROUNDS", (1, 0), (1, -1), [colors.white, colors.HexColor("#FBFAFF")]),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    story.append(summary_table)
+    story.append(Spacer(1, 5 * mm))
+
+    story.append(Paragraph("Prediction Details", section_style))
+    if prediction == "Other":
+        story.append(
+            Paragraph(
+                "The image was assigned to the Other / rejection category because it did not match "
+                "the supported Benign-like or Melanoma-suspicious patterns strongly enough. "
+                "Confidence percentages are intentionally not presented for this rejection result.",
+                small_style,
+            )
+        )
+    else:
+        probabilities = probabilities or {}
+        benign_value = probabilities.get("benign", probabilities.get("Benign-like"))
+        melanoma_value = probabilities.get("melanoma", probabilities.get("Melanoma-suspicious"))
+        pred_rows = [["Output", "Model response"]]
+        pred_rows.append([
+            "Benign-like",
+            "Not available" if benign_value is None else f"{float(benign_value) * 100:.2f}%",
+        ])
+        pred_rows.append([
+            "Melanoma-suspicious",
+            "Not available" if melanoma_value is None else f"{float(melanoma_value) * 100:.2f}%",
+        ])
+        pred_table = Table(pred_rows, colWidths=[88 * mm, 88 * mm], hAlign="CENTER")
+        pred_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#6D3FDB")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("ALIGN", (1, 1), (1, -1), "CENTER"),
+                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#D8D0F2")),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F6FF")]),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        story.append(pred_table)
+        story.append(Spacer(1, 2.5 * mm))
+        story.append(
+            Paragraph(
+                "These percentages are neural-network model responses, not medical diagnosis probabilities.",
+                small_style,
+            )
+        )
+
+    story.append(Paragraph("Image Analysis", section_style))
+    original_img = _image_for_pdf(image)
+    if gradcam_overlay is not None and prediction != "Other":
+        highlighted_img = _image_for_pdf(gradcam_overlay)
+        image_table = Table(
+            [
+                [Paragraph("Original image", small_style), Paragraph("AI attention / Grad-CAM", small_style)],
+                [original_img, highlighted_img],
+            ],
+            colWidths=[88 * mm, 88 * mm],
+            hAlign="CENTER",
+        )
+        image_table.setStyle(
+            TableStyle(
+                [
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#D3C9F1")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#E4DFF4")),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F3F0FC")),
+                    ("TOPPADDING", (0, 0), (-1, 0), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
+                    ("TOPPADDING", (0, 1), (-1, 1), 8),
+                    ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
+                ]
+            )
+        )
+        story.append(KeepTogether([image_table]))
+        story.append(Spacer(1, 2.5 * mm))
+        story.append(
+            Paragraph(
+                "The highlighted image shows regions that influenced the model response more strongly. "
+                "Grad-CAM does not identify the exact location of cancer.",
+                small_style,
+            )
+        )
+    else:
+        single_table = Table(
+            [[Paragraph("Original image", small_style)], [original_img]],
+            colWidths=[176 * mm],
+            hAlign="CENTER",
+        )
+        single_table.setStyle(
+            TableStyle(
+                [
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#D3C9F1")),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F3F0FC")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        story.append(single_table)
+        if prediction == "Other":
+            story.append(Spacer(1, 2.5 * mm))
+            story.append(
+                Paragraph(
+                    "Grad-CAM is not generated for the Other / rejection category.",
+                    small_style,
+                )
+            )
+
+    story.append(Paragraph("AI Result Explanation", section_style))
+    explanation_items = _explanation_flowables(explanation, styles)
+    if explanation_items:
+        story.extend(explanation_items)
+    else:
+        story.append(Paragraph("No additional explanation was available for this analysis.", small_style))
+
+    def _draw_footer(canvas, report_doc):
+        canvas.saveState()
+        width, _ = A4
+        canvas.setStrokeColor(colors.HexColor("#D8D0F2"))
+        canvas.setLineWidth(0.4)
+        canvas.line(14 * mm, 14 * mm, width - 14 * mm, 14 * mm)
+        canvas.setFont("Helvetica-Bold", 7)
+        canvas.setFillColor(colors.HexColor("#5C3A00"))
+        canvas.drawString(14 * mm, 9.6 * mm, "Medical safety notice: Educational AI/ML prototype - not a medical diagnosis.")
+        canvas.setFont("Helvetica", 6.8)
+        canvas.setFillColor(colors.HexColor("#777B89"))
+        canvas.drawRightString(width - 14 * mm, 9.6 * mm, f"Page {report_doc.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=_draw_footer, onLaterPages=_draw_footer)
+    pdf_buffer.seek(0)
+    return pdf_buffer.getvalue()
+
+
+def render_pdf_download(
+    filename,
+    image,
+    prediction,
+    confidence,
+    probabilities,
+    inference_time,
+    explanation,
+    gradcam_overlay,
+    result_key,
+):
+    try:
+        pdf_bytes = build_pdf_report(
+            filename=filename,
+            image=image,
+            prediction=prediction,
+            confidence=confidence,
+            probabilities=probabilities,
+            inference_time=inference_time,
+            explanation=explanation,
+            gradcam_overlay=gradcam_overlay,
+        )
+        safe_name = _safe_report_filename(filename)
+        st.download_button(
+            "Download Analysis Report (PDF)",
+            data=pdf_bytes,
+            file_name=f"DermaSense_{safe_name}_report.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            key=f"pdf_report_{result_key}",
+        )
+        st.caption(
+            "The PDF includes the original image, Grad-CAM highlighted image when available, prediction details, model responses, explanation and safety notice."
+        )
+    except Exception as exc:
+        st.info(f"PDF report is temporarily unavailable: {exc}")
 
 
 # =========================================================
@@ -1672,6 +2031,7 @@ if page == "Analyze":
             prediction = result["prediction"]
             confidence = result["confidence"]
             probabilities = result["probabilities"]
+            inference_time = float(result.get("inference_time", 0.0))
 
             if len(st.session_state.analysis_results) > 1:
                 st.markdown(f"## Result {result_index}")
@@ -1683,6 +2043,15 @@ if page == "Analyze":
                 st.markdown("## Classification Output")
                 render_final_prediction(prediction, confidence, probabilities)
                 st.markdown("## Why this prediction?")
+                other_explanation = """
+### Why this prediction?
+The uploaded image produced stronger patterns for the model's Other / rejection category. It did not match the supported Benign-like or Melanoma-suspicious patterns strongly enough.
+
+### What Should Someone Generally Do Next?
+If the image is intended to show a concerning or changing skin lesion, use a clear close-up skin photograph and seek professional assessment when appropriate.
+
+DermaSense is an educational decision-support prototype, not a medical diagnosis system.
+"""
                 st.info(
                     """
 The uploaded image produced stronger patterns for the model's **Other / rejection category**.
@@ -1691,6 +2060,18 @@ It did not match the learned **Benign-like** or **Melanoma-suspicious** patterns
 
 DermaSense therefore returns **Other** instead of forcing the image into one of its supported skin-lesion classifications.
 """
+                )
+                st.markdown("### Download Report")
+                render_pdf_download(
+                    filename=filename,
+                    image=image,
+                    prediction=prediction,
+                    confidence=confidence,
+                    probabilities=probabilities,
+                    inference_time=inference_time,
+                    explanation=other_explanation,
+                    gradcam_overlay=None,
+                    result_key=f"{result_index}_{filename}",
                 )
                 if result_index < len(st.session_state.analysis_results):
                     st.divider()
@@ -1707,7 +2088,7 @@ DermaSense therefore returns **Other** instead of forcing the image into one of 
             render_final_prediction(prediction, confidence, probabilities)
 
             # Then explain where the model focused.
-            render_gradcam(model, metadata, image, prediction)
+            gradcam_overlay = render_gradcam(model, metadata, image, prediction)
 
             st.markdown("## AI Result Explanation")
             explanation_key = f"{filename}_{prediction}_{result_index}"
@@ -1721,6 +2102,19 @@ DermaSense therefore returns **Other** instead of forcing the image into one of 
 
             st.warning(
                 "**Medical Safety Notice:** DermaSense is an educational AI/ML decision-support prototype. Its prediction, confidence score, Grad-CAM visualization and 3D illustration must not be interpreted as a medical diagnosis."
+            )
+
+            st.markdown("### Download Report")
+            render_pdf_download(
+                filename=filename,
+                image=image,
+                prediction=prediction,
+                confidence=confidence,
+                probabilities=probabilities,
+                inference_time=inference_time,
+                explanation=st.session_state.result_explanations[explanation_key],
+                gradcam_overlay=gradcam_overlay,
+                result_key=f"{result_index}_{filename}",
             )
 
             if result_index < len(st.session_state.analysis_results):
