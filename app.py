@@ -10,20 +10,28 @@ from datetime import datetime
 import pandas as pd
 from PIL import Image, UnidentifiedImageError
 import streamlit as st
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.platypus import (
-    Image as RLImage,
-    KeepTogether,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
+# ReportLab is optional at startup so the whole Streamlit app
+# never crashes if the PDF dependency is temporarily unavailable.
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        Image as RLImage,
+        KeepTogether,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+    REPORTLAB_AVAILABLE = True
+    REPORTLAB_IMPORT_ERROR = ""
+except Exception as _reportlab_error:
+    REPORTLAB_AVAILABLE = False
+    REPORTLAB_IMPORT_ERROR = str(_reportlab_error)
 import streamlit.components.v1 as components
 
 from utils import (
@@ -1515,6 +1523,12 @@ def build_pdf_report(
     explanation,
     gradcam_overlay=None,
 ):
+    if not REPORTLAB_AVAILABLE:
+        raise RuntimeError(
+            "ReportLab is not available in this deployment. "
+            "Make sure requirements.txt contains reportlab==4.4.9."
+        )
+
     pdf_buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         pdf_buffer,
@@ -1758,6 +1772,13 @@ def render_pdf_download(
     gradcam_overlay,
     result_key,
 ):
+    if not REPORTLAB_AVAILABLE:
+        st.warning(
+            "PDF report is temporarily unavailable on this deployment. "
+            "The main DermaSense analysis is still working."
+        )
+        return
+
     try:
         pdf_bytes = build_pdf_report(
             filename=filename,
