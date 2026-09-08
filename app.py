@@ -112,14 +112,25 @@ p,li,label{color:#D7D2E0;}
 .hero{
   position:relative;
   overflow:hidden;
-  border:1px solid rgba(167,139,250,.16);
-  border-radius:18px;
-  padding:24px 26px;
+  max-width:100%;
+  margin:36px auto 18px auto;
+  padding:20px 24px;
+  border:1px solid rgba(203,180,255,.18);
+  border-radius:16px;
   background:
-    radial-gradient(circle at 92% 8%,rgba(139,92,246,.09),transparent 27%),
-    linear-gradient(145deg,rgba(18,22,37,.98),rgba(27,31,50,.98));
-  box-shadow:0 16px 40px rgba(0,0,0,.28);
-  margin-bottom:16px;
+    radial-gradient(
+      circle at 92% 10%,
+      rgba(156,107,255,.12),
+      transparent 30%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(20,25,47,.98),
+      rgba(33,28,61,.98)
+    );
+  box-shadow:
+    0 12px 32px rgba(0,0,0,.20),
+    0 0 22px rgba(139,92,246,.04);
 }
 
 .hero-kicker{
@@ -130,18 +141,19 @@ p,li,label{color:#D7D2E0;}
 }
 
 .hero-title{
-  color:#F8F5FC;
-  font-size:35px;
-  font-weight:850;
-  margin-top:5px;
+  color:#FFFFFF;
+  font-size:31px;
+  font-weight:900;
+  margin-top:6px;
+  line-height:1.15;
 }
 
 .hero-sub{
-  color:#AAA6B7;
+  color:#B8C2D5;
   font-size:13px;
-  line-height:1.65;
-  margin-top:7px;
-  max-width:800px;
+  line-height:1.6;
+  margin-top:8px;
+  max-width:900px;
 }
 
 /* MODEL READY */
