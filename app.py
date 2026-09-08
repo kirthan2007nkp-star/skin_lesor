@@ -8,30 +8,8 @@ import time
 from datetime import datetime
 
 import pandas as pd
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
 import streamlit as st
-# ReportLab is optional at startup so the whole Streamlit app
-# never crashes if the PDF dependency is temporarily unavailable.
-try:
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.lib.units import mm
-    from reportlab.platypus import (
-        Image as RLImage,
-        KeepTogether,
-        Paragraph,
-        SimpleDocTemplate,
-        Spacer,
-        Table,
-        TableStyle,
-    )
-    REPORTLAB_AVAILABLE = True
-    REPORTLAB_IMPORT_ERROR = ""
-except Exception as _reportlab_error:
-    REPORTLAB_AVAILABLE = False
-    REPORTLAB_IMPORT_ERROR = str(_reportlab_error)
 import streamlit.components.v1 as components
 
 from utils import (
@@ -1453,7 +1431,7 @@ Do not prescribe medication or doses. End by saying that DermaSense is an educat
         )
 
 # =========================================================
-# PDF REPORT
+# PDF REPORT - Pillow only (no ReportLab dependency)
 # =========================================================
 def _safe_report_filename(filename: str) -> str:
     stem = Path(str(filename)).stem
@@ -1461,56 +1439,120 @@ def _safe_report_filename(filename: str) -> str:
     return safe or "dermasense_analysis"
 
 
-def _image_for_pdf(image, max_width_mm=70, max_height_mm=58):
+def _pdf_font(size: int, bold: bool = False):
+    """Load a common font on Windows/Linux, with a safe fallback."""
+    candidates = []
+    if bold:
+        candidates.extend(
+            [
+                "DejaVuSans-Bold.ttf",
+                "Arial Bold.ttf",
+                "arialbd.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            ]
+        )
+    else:
+        candidates.extend(
+            [
+                "DejaVuSans.ttf",
+                "Arial.ttf",
+                "arial.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            ]
+        )
+
+    for font_name in candidates:
+        try:
+            return ImageFont.truetype(font_name, size=size)
+        except Exception:
+            pass
+    return ImageFont.load_default()
+
+
+def _wrap_pdf_text(draw, text, font, max_width):
+    text = str(text or "").replace("**", "")
+    words = text.split()
+    if not words:
+        return [""]
+
+    lines = []
+    current = words[0]
+
+    for word in words[1:]:
+        trial = current + " " + word
+        box = draw.textbbox((0, 0), trial, font=font)
+        width = box[2] - box[0]
+        if width <= max_width:
+            current = trial
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
+def _draw_wrapped(draw, text, xy, font, fill, max_width, line_gap=8):
+    x, y = xy
+    box = draw.textbbox((0, 0), "Ag", font=font)
+    line_height = max(18, box[3] - box[1]) + line_gap
+
+    for line in _wrap_pdf_text(draw, text, font, max_width):
+        draw.text((x, y), line, font=font, fill=fill)
+        y += line_height
+    return y
+
+
+def _fit_image_for_report(image, target_w, target_h):
     if not isinstance(image, Image.Image):
         image = Image.fromarray(image)
-    img = image.convert("RGB")
 
-    image_buffer = io.BytesIO()
-    img.save(image_buffer, format="JPEG", quality=94)
-    image_buffer.seek(0)
+    img = image.convert("RGB").copy()
+    img.thumbnail((target_w, target_h), Image.Resampling.LANCZOS)
 
-    width_px, height_px = img.size
-    max_w = max_width_mm * mm
-    max_h = max_height_mm * mm
-    scale = min(max_w / max(width_px, 1), max_h / max(height_px, 1))
-    width = max(1, width_px * scale)
-    height = max(1, height_px * scale)
-    return RLImage(image_buffer, width=width, height=height)
+    canvas = Image.new("RGB", (target_w, target_h), "white")
+    x = (target_w - img.width) // 2
+    y = (target_h - img.height) // 2
+    canvas.paste(img, (x, y))
+    return canvas
 
 
-def _explanation_flowables(explanation: str, styles):
-    items = []
-    body = ParagraphStyle(
-        "ReportBody",
-        parent=styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=9.2,
-        leading=13,
-        textColor=colors.HexColor("#303548"),
-        spaceAfter=5,
+def _new_report_page():
+    # A4-ish canvas at ~150 DPI.
+    return Image.new("RGB", (1240, 1754), "#FFFFFF")
+
+
+def _draw_report_header(draw, title="DermaSense AI - Analysis Report"):
+    purple = "#5B36C9"
+    dark = "#23263A"
+    muted = "#6F7485"
+
+    draw.rounded_rectangle((55, 45, 1185, 175), radius=26, fill="#F3F0FF")
+    draw.text((85, 72), title, font=_pdf_font(42, True), fill=dark)
+    draw.text(
+        (85, 125),
+        "Explainable AI skin-image analysis prototype",
+        font=_pdf_font(20, False),
+        fill=purple,
     )
-    subhead = ParagraphStyle(
-        "ReportSubhead",
-        parent=styles["Heading3"],
-        fontName="Helvetica-Bold",
-        fontSize=10.5,
-        leading=13,
-        textColor=colors.HexColor("#6D3FDB"),
-        spaceBefore=5,
-        spaceAfter=3,
-    )
+    draw.line((55, 205, 1185, 205), fill="#DDD5F4", width=3)
 
-    for raw_line in str(explanation or "").splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        if line.startswith("### "):
-            items.append(Paragraph(html.escape(line[4:]), subhead))
-        else:
-            clean = line.replace("**", "")
-            items.append(Paragraph(html.escape(clean), body))
-    return items
+    return 235
+
+
+def _draw_section_title(draw, title, y):
+    draw.text((70, y), title, font=_pdf_font(27, True), fill="#5B36C9")
+    return y + 48
+
+
+def _draw_key_value(draw, key, value, y):
+    key_font = _pdf_font(19, True)
+    value_font = _pdf_font(19, False)
+
+    draw.rounded_rectangle((70, y, 1170, y + 58), radius=10, fill="#FAF9FE")
+    draw.text((90, y + 16), str(key), font=key_font, fill="#4E3B8E")
+    draw.text((395, y + 16), str(value), font=value_font, fill="#303548")
+    return y + 68
 
 
 def build_pdf_report(
@@ -1523,240 +1565,242 @@ def build_pdf_report(
     explanation,
     gradcam_overlay=None,
 ):
-    if not REPORTLAB_AVAILABLE:
-        raise RuntimeError(
-            "ReportLab is not available in this deployment. "
-            "Make sure requirements.txt contains reportlab==4.4.9."
-        )
+    """
+    Build a PDF entirely with Pillow so Streamlit Cloud does not need ReportLab.
+    The PDF contains the original image, Grad-CAM image when available,
+    prediction/model responses, explanation, and safety notice.
+    """
+    pages = []
 
-    pdf_buffer = io.BytesIO()
-    doc = SimpleDocTemplate(
-        pdf_buffer,
-        pagesize=A4,
-        rightMargin=14 * mm,
-        leftMargin=14 * mm,
-        topMargin=13 * mm,
-        bottomMargin=20 * mm,
-        title="DermaSense AI Analysis Report",
-        author="DermaSense AI",
-    )
+    # ---------------- PAGE 1 ----------------
+    page1 = _new_report_page()
+    draw = ImageDraw.Draw(page1)
+    y = _draw_report_header(draw)
 
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "DSReportTitle",
-        parent=styles["Title"],
-        fontName="Helvetica-Bold",
-        fontSize=20,
-        leading=24,
-        textColor=colors.HexColor("#281D4F"),
-        alignment=TA_CENTER,
-        spaceAfter=3,
-    )
-    subtitle_style = ParagraphStyle(
-        "DSReportSubtitle",
-        parent=styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=8.6,
-        leading=11,
-        textColor=colors.HexColor("#74798B"),
-        alignment=TA_CENTER,
-        spaceAfter=10,
-    )
-    section_style = ParagraphStyle(
-        "DSReportSection",
-        parent=styles["Heading2"],
-        fontName="Helvetica-Bold",
-        fontSize=12.5,
-        leading=15,
-        textColor=colors.HexColor("#5B36C9"),
-        spaceBefore=8,
-        spaceAfter=6,
-    )
-    small_style = ParagraphStyle(
-        "DSReportSmall",
-        parent=styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=8,
-        leading=10.5,
-        textColor=colors.HexColor("#646A7B"),
-    )
-
-
-    story = [
-        Paragraph("DermaSense AI - Analysis Report", title_style),
-        Paragraph(
-            "Explainable and confidence-aware AI skin-image screening prototype",
-            subtitle_style,
-        ),
-    ]
+    y = _draw_section_title(draw, "Analysis Summary", y)
 
     generated_at = datetime.now().strftime("%d %b %Y, %I:%M %p")
-    summary_data = [
-        ["Report generated", generated_at],
-        ["Image file", str(filename)],
-        ["Model", "MobileNetV2 transfer learning"],
-        ["Input", "224 x 224 RGB image"],
-        ["Classification", str(prediction)],
-        ["Inference time", f"{float(inference_time):.3f} seconds"],
-    ]
+    y = _draw_key_value(draw, "Generated", generated_at, y)
+    y = _draw_key_value(draw, "Image file", str(filename), y)
+    y = _draw_key_value(draw, "Model", "MobileNetV2 transfer learning", y)
+    y = _draw_key_value(draw, "Input", "224 x 224 RGB image", y)
+    y = _draw_key_value(draw, "Prediction", str(prediction), y)
+    y = _draw_key_value(draw, "Inference time", f"{float(inference_time):.3f} seconds", y)
+
     if prediction != "Other":
-        summary_data.append(["Primary model response", f"{float(confidence) * 100:.2f}%"])
-
-    summary_table = Table(summary_data, colWidths=[48 * mm, 128 * mm], hAlign="CENTER")
-    summary_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F1EDFF")),
-                ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#49328F")),
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
-                ("TEXTCOLOR", (1, 0), (1, -1), colors.HexColor("#303548")),
-                ("FONTSIZE", (0, 0), (-1, -1), 8.7),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D7CFF3")),
-                ("ROWBACKGROUNDS", (1, 0), (1, -1), [colors.white, colors.HexColor("#FBFAFF")]),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ]
+        y = _draw_key_value(
+            draw,
+            "Primary model response",
+            f"{float(confidence) * 100:.2f}%",
+            y,
         )
-    )
-    story.append(summary_table)
-    story.append(Spacer(1, 5 * mm))
 
-    story.append(Paragraph("Prediction Details", section_style))
+    y += 12
+    y = _draw_section_title(draw, "Prediction Details", y)
+
+    body_font = _pdf_font(19, False)
+    body_bold = _pdf_font(19, True)
+    muted = "#63697B"
+
     if prediction == "Other":
-        story.append(
-            Paragraph(
-                "The image was assigned to the Other / rejection category because it did not match "
-                "the supported Benign-like or Melanoma-suspicious patterns strongly enough. "
-                "Confidence percentages are intentionally not presented for this rejection result.",
-                small_style,
-            )
+        y = _draw_wrapped(
+            draw,
+            (
+                "This image was assigned to the Other / rejection category. "
+                "Confidence percentages are intentionally not shown for this result."
+            ),
+            (80, y),
+            body_font,
+            muted,
+            1080,
+            9,
         )
     else:
         probabilities = probabilities or {}
         benign_value = probabilities.get("benign", probabilities.get("Benign-like"))
-        melanoma_value = probabilities.get("melanoma", probabilities.get("Melanoma-suspicious"))
-        pred_rows = [["Output", "Model response"]]
-        pred_rows.append([
-            "Benign-like",
-            "Not available" if benign_value is None else f"{float(benign_value) * 100:.2f}%",
-        ])
-        pred_rows.append([
+        melanoma_value = probabilities.get(
+            "melanoma", probabilities.get("Melanoma-suspicious")
+        )
+
+        benign_text = (
+            "Not available"
+            if benign_value is None
+            else f"{float(benign_value) * 100:.2f}%"
+        )
+        melanoma_text = (
+            "Not available"
+            if melanoma_value is None
+            else f"{float(melanoma_value) * 100:.2f}%"
+        )
+
+        draw.rounded_rectangle((80, y, 1160, y + 145), radius=16, fill="#F8F6FF")
+        draw.text((105, y + 25), "Benign-like", font=body_bold, fill="#303548")
+        draw.text((850, y + 25), benign_text, font=body_bold, fill="#5B36C9")
+        draw.line((105, y + 72, 1135, y + 72), fill="#DDD5F4", width=2)
+        draw.text(
+            (105, y + 92),
             "Melanoma-suspicious",
-            "Not available" if melanoma_value is None else f"{float(melanoma_value) * 100:.2f}%",
-        ])
-        pred_table = Table(pred_rows, colWidths=[88 * mm, 88 * mm], hAlign="CENTER")
-        pred_table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#6D3FDB")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ("ALIGN", (1, 1), (1, -1), "CENTER"),
-                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#D8D0F2")),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F6FF")]),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ]
-            )
+            font=body_bold,
+            fill="#303548",
         )
-        story.append(pred_table)
-        story.append(Spacer(1, 2.5 * mm))
-        story.append(
-            Paragraph(
-                "These percentages are neural-network model responses, not medical diagnosis probabilities.",
-                small_style,
-            )
+        draw.text((850, y + 92), melanoma_text, font=body_bold, fill="#5B36C9")
+        y += 175
+
+        y = _draw_wrapped(
+            draw,
+            (
+                "These percentages are neural-network model responses, "
+                "not medical diagnosis probabilities."
+            ),
+            (80, y),
+            body_font,
+            muted,
+            1080,
+            8,
         )
 
-    story.append(Paragraph("Image Analysis", section_style))
-    original_img = _image_for_pdf(image)
+    # Safety footer on page 1.
+    draw.line((70, 1665, 1170, 1665), fill="#DDD5F4", width=2)
+    draw.text(
+        (70, 1682),
+        "Educational AI/ML prototype - not a medical diagnosis system.",
+        font=_pdf_font(16, True),
+        fill="#6A4C10",
+    )
+    pages.append(page1)
+
+    # ---------------- PAGE 2: IMAGES ----------------
+    page2 = _new_report_page()
+    draw2 = ImageDraw.Draw(page2)
+    y2 = _draw_report_header(draw2)
+
+    y2 = _draw_section_title(draw2, "Image Analysis", y2)
+
+    original_panel = _fit_image_for_report(image, 500, 520)
+
     if gradcam_overlay is not None and prediction != "Other":
-        highlighted_img = _image_for_pdf(gradcam_overlay)
-        image_table = Table(
-            [
-                [Paragraph("Original image", small_style), Paragraph("AI attention / Grad-CAM", small_style)],
-                [original_img, highlighted_img],
-            ],
-            colWidths=[88 * mm, 88 * mm],
-            hAlign="CENTER",
+        grad_panel = _fit_image_for_report(gradcam_overlay, 500, 520)
+
+        draw2.text((100, y2), "Original image", font=_pdf_font(21, True), fill="#303548")
+        draw2.text(
+            (660, y2),
+            "AI attention / Grad-CAM",
+            font=_pdf_font(21, True),
+            fill="#303548",
         )
-        image_table.setStyle(
-            TableStyle(
-                [
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#D3C9F1")),
-                    ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#E4DFF4")),
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F3F0FC")),
-                    ("TOPPADDING", (0, 0), (-1, 0), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
-                    ("TOPPADDING", (0, 1), (-1, 1), 8),
-                    ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
-                ]
-            )
-        )
-        story.append(KeepTogether([image_table]))
-        story.append(Spacer(1, 2.5 * mm))
-        story.append(
-            Paragraph(
-                "The highlighted image shows regions that influenced the model response more strongly. "
-                "Grad-CAM does not identify the exact location of cancer.",
-                small_style,
-            )
+        y2 += 46
+
+        draw2.rounded_rectangle((75, y2, 595, y2 + 540), radius=18, outline="#D8D0F2", width=3)
+        draw2.rounded_rectangle((635, y2, 1155, y2 + 540), radius=18, outline="#D8D0F2", width=3)
+        page2.paste(original_panel, (85, y2 + 10))
+        page2.paste(grad_panel, (645, y2 + 10))
+        y2 += 585
+
+        y2 = _draw_wrapped(
+            draw2,
+            (
+                "Grad-CAM highlights image regions that influenced the neural network "
+                "more strongly. It does not identify the exact location of cancer."
+            ),
+            (85, y2),
+            _pdf_font(19, False),
+            "#63697B",
+            1060,
+            8,
         )
     else:
-        single_table = Table(
-            [[Paragraph("Original image", small_style)], [original_img]],
-            colWidths=[176 * mm],
-            hAlign="CENTER",
-        )
-        single_table.setStyle(
-            TableStyle(
-                [
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#D3C9F1")),
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F3F0FC")),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ]
-            )
-        )
-        story.append(single_table)
+        draw2.text((100, y2), "Original image", font=_pdf_font(21, True), fill="#303548")
+        y2 += 46
+        draw2.rounded_rectangle((350, y2, 890, y2 + 540), radius=18, outline="#D8D0F2", width=3)
+        page2.paste(original_panel, (370, y2 + 10))
+        y2 += 585
+
         if prediction == "Other":
-            story.append(Spacer(1, 2.5 * mm))
-            story.append(
-                Paragraph(
-                    "Grad-CAM is not generated for the Other / rejection category.",
-                    small_style,
-                )
+            y2 = _draw_wrapped(
+                draw2,
+                "Grad-CAM is not generated for the Other / rejection category.",
+                (85, y2),
+                _pdf_font(19, False),
+                "#63697B",
+                1060,
+                8,
             )
 
-    story.append(Paragraph("AI Result Explanation", section_style))
-    explanation_items = _explanation_flowables(explanation, styles)
-    if explanation_items:
-        story.extend(explanation_items)
-    else:
-        story.append(Paragraph("No additional explanation was available for this analysis.", small_style))
+    draw2.line((70, 1665, 1170, 1665), fill="#DDD5F4", width=2)
+    draw2.text(
+        (70, 1682),
+        "Model attention visualization is explanatory only and is not lesion localization.",
+        font=_pdf_font(16, True),
+        fill="#6A4C10",
+    )
+    pages.append(page2)
 
-    def _draw_footer(canvas, report_doc):
-        canvas.saveState()
-        width, _ = A4
-        canvas.setStrokeColor(colors.HexColor("#D8D0F2"))
-        canvas.setLineWidth(0.4)
-        canvas.line(14 * mm, 14 * mm, width - 14 * mm, 14 * mm)
-        canvas.setFont("Helvetica-Bold", 7)
-        canvas.setFillColor(colors.HexColor("#5C3A00"))
-        canvas.drawString(14 * mm, 9.6 * mm, "Medical safety notice: Educational AI/ML prototype - not a medical diagnosis.")
-        canvas.setFont("Helvetica", 6.8)
-        canvas.setFillColor(colors.HexColor("#777B89"))
-        canvas.drawRightString(width - 14 * mm, 9.6 * mm, f"Page {report_doc.page}")
-        canvas.restoreState()
+    # ---------------- PAGE 3: EXPLANATION ----------------
+    page3 = _new_report_page()
+    draw3 = ImageDraw.Draw(page3)
+    y3 = _draw_report_header(draw3)
 
-    doc.build(story, onFirstPage=_draw_footer, onLaterPages=_draw_footer)
+    y3 = _draw_section_title(draw3, "AI Result Explanation", y3)
+
+    explanation_text = str(explanation or "").strip()
+    if not explanation_text:
+        explanation_text = "No additional explanation was available for this analysis."
+
+    normal_font = _pdf_font(18, False)
+    heading_font = _pdf_font(21, True)
+
+    for raw_line in explanation_text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            y3 += 10
+            continue
+
+        if line.startswith("### "):
+            y3 += 7
+            y3 = _draw_wrapped(
+                draw3,
+                line[4:],
+                (80, y3),
+                heading_font,
+                "#5B36C9",
+                1080,
+                8,
+            )
+            y3 += 5
+        else:
+            y3 = _draw_wrapped(
+                draw3,
+                line.replace("**", ""),
+                (80, y3),
+                normal_font,
+                "#303548",
+                1080,
+                8,
+            )
+            y3 += 8
+
+        # Avoid drawing into the footer.
+        if y3 > 1540:
+            break
+
+    draw3.rounded_rectangle((70, 1570, 1170, 1650), radius=16, fill="#FFF8E8")
+    draw3.text(
+        (95, 1595),
+        "Safety notice: DermaSense is an educational ML prototype and does not replace professional examination.",
+        font=_pdf_font(16, True),
+        fill="#6A4C10",
+    )
+    pages.append(page3)
+
+    # Save all report pages into one PDF.
+    pdf_buffer = io.BytesIO()
+    pages[0].save(
+        pdf_buffer,
+        format="PDF",
+        save_all=True,
+        append_images=pages[1:],
+        resolution=150.0,
+    )
     pdf_buffer.seek(0)
     return pdf_buffer.getvalue()
 
@@ -1772,13 +1816,6 @@ def render_pdf_download(
     gradcam_overlay,
     result_key,
 ):
-    if not REPORTLAB_AVAILABLE:
-        st.warning(
-            "PDF report is temporarily unavailable on this deployment. "
-            "The main DermaSense analysis is still working."
-        )
-        return
-
     try:
         pdf_bytes = build_pdf_report(
             filename=filename,
@@ -1790,7 +1827,9 @@ def render_pdf_download(
             explanation=explanation,
             gradcam_overlay=gradcam_overlay,
         )
+
         safe_name = _safe_report_filename(filename)
+
         st.download_button(
             "Download Analysis Report (PDF)",
             data=pdf_bytes,
@@ -1799,9 +1838,12 @@ def render_pdf_download(
             use_container_width=True,
             key=f"pdf_report_{result_key}",
         )
+
         st.caption(
-            "The PDF includes the original image, Grad-CAM highlighted image when available, prediction details, model responses, explanation and safety notice."
+            "Includes the original image, Grad-CAM highlighted image when available, "
+            "prediction details, model responses, explanation and safety notice."
         )
+
     except Exception as exc:
         st.info(f"PDF report is temporarily unavailable: {exc}")
 
